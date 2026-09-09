@@ -35,6 +35,7 @@ class ObsManager:
         )
         self.robot_cfg = obs_config.get("robot", {})
         self.collect_freq = self.obs_config.get("collect_freq", 0)
+        self.capture_render_passes = int(self.obs_config.get("capture_render_passes", 2))
         if self.collect_freq > 0:
             self.collect_interval = 1.0 / (self.dt * self.collect_freq)
         else:
@@ -72,6 +73,10 @@ class ObsManager:
     def reset(self):
         self.desc_manager.reset()
         self.instruction = self.desc_manager.get_one_description()
+
+    def render_for_capture(self):
+        for _ in range(self.capture_render_passes):
+            self.env.render()
 
     def get_obs(self, env_idx_list=None):  # batch
         if env_idx_list is None:
