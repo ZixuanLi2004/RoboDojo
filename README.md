@@ -132,7 +132,8 @@ results. Results are written under
 `eval_result/MiVerse/<task>/<policy>/miverse/`. Use the
 [MiVerse guide](scripts/MiVerse/README.md) for multi-GPU evaluation, split
 server/client commands, resume, and the full 24-task × 3-seed summary.
-Each base task requires 50 episodes per seed; each `_l`/`_s` variant requires 25.
+All 24 tasks, including the base tasks and `_l`/`_s` variants, require 25 episodes
+per seed, as configured in `task/MiVerse/config/_task.yml`.
 MiVerse supports every evaluation command; RoboDojo capability `dimensions`
 do not apply to its tasks. For the original benchmark, follow the
 [RoboDojo CLI guide](scripts/README.md).

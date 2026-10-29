@@ -15,18 +15,19 @@ Rules:
   * `_result.json` -> `details` holds per-episode entries with `success` (bool)
     and `score` (float in [0, 1]).
   * A cell requires the first N episode records, where N is the task's native
-    count: 50 for base tasks and 25 for `_l` / `_s` variants. Otherwise it stays blank.
+    count: currently 25 for every base task and `_l` / `_s` variant. Otherwise it stays blank.
   * Each policy table lists seeds 0, 1, 2.
   * The overview lists every policy with at least one completed (task, seed)
     cell. Progress = completed cells / (task count x 3 seeds), currently 72 cells.
   * Avg SR and Avg Score are the unweighted mean of the configured tasks. Across seeds
-    they are reported as mean ±std. Incomplete policies use the tasks finished
+    they are reported as mean ±population std. Incomplete policies use the tasks finished
     so far and are marked with dagger in Progress.
   * success_rate = successes / count * 100
     score        = sum(scores) / count * 100
 """
 
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -85,17 +86,23 @@ def list_subdirs(path):
     )
 
 
+def result_recency_key(result_dir):
+    """Order results by modification time, run id, then encoded directory label."""
+    return (
+        os.stat(os.path.join(result_dir, "_result.json")).st_mtime_ns,
+        os.path.basename(result_dir),
+        os.path.basename(os.path.dirname(result_dir)),
+    )
+
+
 def latest_timestamp_dir(run_dir):
     """Return the run with the newest result, including arbitrary --run-id names."""
-    candidates = []
-    for name in list_subdirs(run_dir):
-        result = os.path.join(run_dir, name, "_result.json")
-        if os.path.isfile(result):
-            candidates.append((os.stat(result).st_mtime_ns, name))
-    if not candidates:
-        return None
+    candidates = [
+        os.path.join(run_dir, name) for name in list_subdirs(run_dir)
+        if os.path.isfile(os.path.join(run_dir, name, "_result.json"))
+    ]
     # Batch run ids are user-defined; lexical order need not reflect recency.
-    return os.path.join(run_dir, max(candidates)[1])
+    return max(candidates, key=result_recency_key, default=None)
 
 
 def load_entries(ts_dir):
@@ -142,7 +149,7 @@ def load_entries(ts_dir):
 def scan_task(task, ckpt=None, action_type=None, env_cfg=None):
     """Return {(experiment, seed): entries}, keeping result configurations apart."""
     task_path = os.path.join(ROOT, task)
-    out = {}
+    latest = {}
     for policy in list_subdirs(task_path):
         policy_path = os.path.join(task_path, policy)
         for embodiment in list_subdirs(policy_path):
@@ -159,28 +166,43 @@ def scan_task(task, ckpt=None, action_type=None, env_cfg=None):
                 ts_dir = latest_timestamp_dir(os.path.join(emb_path, run))
                 if ts_dir is None:
                     continue
-                result_path = os.path.join(ts_dir, "_result.json")
-                try:
-                    run_info = decode_result_info(run[m.end():], result_path)
-                except (OSError, ValueError) as exc:
-                    print(f"Warning: ignoring {result_path}: {exc}", file=sys.stderr)
-                    continue
-                metadata = dict(
-                    item.split("=", 1) for item in run_info.split(",") if "=" in item
-                )
-                # Launchers append action_type after the full checkpoint value,
-                # which may itself contain commas or equals signs.
-                checkpoint_info, action_marker, saved_action = run_info.rpartition(",action_type=")
-                if action_marker and checkpoint_info.startswith("ckpt_name="):
-                    metadata = {"ckpt_name": checkpoint_info[len("ckpt_name="):], "action_type": saved_action}
-                if ckpt is not None and metadata.get("ckpt_name") != ckpt:
-                    continue
-                if action_type is not None and metadata.get("action_type") != action_type:
-                    continue
-                entries = load_entries(ts_dir)
-                if entries is None:
-                    continue
-                out[((policy, embodiment, run_info), seed)] = entries
+                directory_info = run[m.end():]
+                # Use the same identity for plain/encoded labels and legacy hashes.
+                # Select before reading JSON so even a broken newest hashed result
+                # blocks fallback to an older result under another directory label.
+                if directory_info.startswith("sha256:"):
+                    identity = directory_info
+                else:
+                    run_info = decode_result_info(directory_info)
+                    identity = "sha256:" + hashlib.sha256(run_info.encode("utf-8")).hexdigest()
+                key = (policy, embodiment, identity, seed)
+                candidate = (result_recency_key(ts_dir), directory_info, ts_dir)
+                if key not in latest or candidate[0] > latest[key][0]:
+                    latest[key] = candidate
+
+    out = {}
+    for (policy, embodiment, _identity, seed), (_recency, directory_info, ts_dir) in latest.items():
+        result_path = os.path.join(ts_dir, "_result.json")
+        try:
+            run_info = decode_result_info(directory_info, result_path)
+        except (OSError, ValueError) as exc:
+            print(f"Warning: ignoring {result_path}: {exc}", file=sys.stderr)
+            continue
+        metadata = dict(
+            item.split("=", 1) for item in run_info.split(",") if "=" in item
+        )
+        # Launchers append action_type after the full checkpoint value,
+        # which may itself contain commas or equals signs.
+        checkpoint_info, action_marker, saved_action = run_info.rpartition(",action_type=")
+        if action_marker and checkpoint_info.startswith("ckpt_name="):
+            metadata = {"ckpt_name": checkpoint_info[len("ckpt_name="):], "action_type": saved_action}
+        if ckpt is not None and metadata.get("ckpt_name") != ckpt:
+            continue
+        if action_type is not None and metadata.get("action_type") != action_type:
+            continue
+        entries = load_entries(ts_dir)
+        if entries is not None:
+            out[((policy, embodiment, run_info), seed)] = entries
     return out
 
 
@@ -230,19 +252,6 @@ def main(root=None, output=None, ckpt=None, action_type=None, env_cfg=None):
         f"Wrote {len(data)} experiment tables ({n_cells} filled cells, "
         f"{tested} in overview, {complete} complete) to {OUTPUT_MD}"
     )
-
-
-def mean_with_spread(values, integer=False):
-    """Format `mean ±amp` where amp is half the (max - min) range across seeds.
-
-    Returns "" when there is no data so the cell stays blank.
-    """
-    if not values:
-        return ""
-    mean = sum(values) / len(values)
-    amp = (max(values) - min(values)) / 2.0
-    fmt = "{:.0f}" if integer else "{:.2f}"
-    return f"{fmt.format(mean)} ±{fmt.format(amp)}"
 
 
 def task_seed_means(task_data, seeds):
@@ -399,8 +408,8 @@ def format_task_row(task, task_data):
             cells.append("")
             cells.append("")
     if len(srs) == len(EXPECTED_SEEDS):
-        cells.append(mean_with_spread(srs, integer=True))
-        cells.append(mean_with_spread(scores))
+        cells.append(format_mean_std(mean_std(srs)))
+        cells.append(format_mean_std(mean_std(scores)))
     else:
         cells.extend(["", ""])
     return cells
@@ -422,8 +431,8 @@ def format_avg_row(policy_data):
             seed_srs.append(sr)
             seed_scores.append(score)
     if len(seed_srs) == len(EXPECTED_SEEDS):
-        cells.append(mean_with_spread(seed_srs, integer=True))
-        cells.append(mean_with_spread(seed_scores))
+        cells.append(format_mean_std(mean_std(seed_srs)))
+        cells.append(format_mean_std(mean_std(seed_scores)))
     else:
         cells.extend(["", ""])
     return cells
@@ -438,7 +447,8 @@ def write_markdown(data):
         "Only seeds 0, 1, 2 are counted. Each task needs its native episode count from "
         f"`task/MiVerse/config/_task.yml`{count_note}. The most recently modified `_result.json` "
         "is used for each cell. Latest incomplete results stay blank; "
-        "invalid results are reported in the terminal.",
+        "invalid results are reported in the terminal. "
+        "All ± values use the population standard deviation across seeds.",
         "",
     ])
     lines += build_overview(data)

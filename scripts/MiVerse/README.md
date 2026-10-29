@@ -56,9 +56,10 @@ Assets/
 Keep referenced files within those packages intact. The downloader checks
 source file lists and sizes and rejects unresolved Git LFS pointers; empty
 directories do not pass. Download verification does not check GPU simulation
-or the native layout counts. A full evaluation needs at least 50
-usable layouts per base task and 25 per `_l`/`_s` variant for each seed `0`,
-`1`, and `2`. Layout indices are sorted numerically. Both the `miverse` profile
+or the native layout counts. A full evaluation needs at least 25 usable layouts
+per task for all 24 tasks, including base tasks and `_l`/`_s` variants, for each
+seed `0`, `1`, and `2`, as configured in `task/MiVerse/config/_task.yml`.
+Layout indices are sorted numerically. Both the `miverse` profile
 and its layout/result `config_name` are `miverse`.
 
 For a weight-free interface check, create the demo environment from the root:
@@ -283,9 +284,10 @@ bash scripts/evaluate.sh benchmark --bench MiVerse \
 ```
 
 `smoke` defaults to one episode per task. `benchmark --eval-num native` uses the
-episode counts in `task/MiVerse/config/_task.yml` (50 for base tasks and 25 for
-each `_l`/`_s` variant), even if `EVAL_NUM` is set in the parent shell. Repeat the
-command with `--seed 1` and `--seed 2` for the three-seed summary.
+episode counts in `task/MiVerse/config/_task.yml` (25 for each of the 24 tasks,
+including base tasks and `_l`/`_s` variants), even if `EVAL_NUM` is set in the
+parent shell. Repeat the command with `--seed 1` and `--seed 2` for the
+three-seed summary.
 
 Select tasks with `--only task_a,task_b`, `--tasks-file PATH`, or `--limit`.
 MiVerse has 24 tasks and no capability dimensions. Execution is sequential
@@ -313,9 +315,9 @@ same profile, policy, checkpoint, action type, seed, and episode count. A task
 must also use the same execution mode (`eval` or `client`) when resumed. A task
 passes batch validation only if its process exits successfully and its saved
 result contains an integer `eval_time` reaching `min(requested, native)`:
-one episode for a one-episode smoke, or 50 for a native base task and 25 for
-a native `_l`/`_s` variant. Partial runs are marked `FAIL` and are not skipped
-on resume. This status measures
+one episode for a one-episode smoke, or 25 for every native task, including
+base tasks and `_l`/`_s` variants. Partial runs are marked `FAIL` and are not
+skipped on resume. This status measures
 evaluation completion, separately from the policy's task success rate.
 
 Parallel sweeps save completed workers' results when interrupted by Ctrl-C or
@@ -360,13 +362,18 @@ profile, filter by the `config_name` saved in its result directories.
 Each result configuration and run label, including checkpoint and action type,
 forms a separate experiment. Summaries report success rate and score for all
 24 tasks and seeds 0, 1, 2, with progress out of 72 task/seed cells. A cell
-requires the task's native episode count (50 for base tasks, 25 for `_l`/`_s`
-variants), and only the first such records are scored. The run with the newest
-`_result.json` modification time is used, with run-directory name as the tie-breaker; directories
-without a result file are ignored. An incomplete or invalid latest result does
-not fall back to an older completed result. Incomplete cells stay blank, and
-invalid files are reported in the terminal. Smoke results with one episode do
-not fill a full benchmark cell.
+requires the task's native episode count (25 for all 24 tasks, as configured in
+`task/MiVerse/config/_task.yml`), and only the first such records are scored.
+The run with the newest `_result.json` modification time is selected across all
+directories for the same decoded experiment/task/seed, including plain,
+`urlencoded:`, and legacy `sha256:` labels that identify the same experiment.
+Ties use the run-directory name, then the experiment-directory name. Directories
+without a result file are ignored. An incomplete or
+invalid latest result does not fall back to an older completed result.
+Incomplete cells stay blank, and invalid files are reported in the terminal.
+Smoke results with one episode do not fill a full benchmark cell. All `±`
+values use population standard deviations across seeds, in both the overview
+and detailed task tables.
 
 ## Validation scope
 

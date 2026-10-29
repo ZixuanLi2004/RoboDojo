@@ -217,8 +217,8 @@ Remove `--dry-run` to launch. A batch task passes validation only when its proce
 exits successfully and `_result.json` has a valid integer `eval_time` covering
 the requested episode count, capped by that task's native count. For example,
 MiVerse `--eval-num 1` requires one completed episode, while `--eval-num native`
-requires 50 for a base task and 25 for an `_l`/`_s` variant, as configured in
-`task/MiVerse/config/_task.yml`. A partial native evaluation is marked `FAIL`
+requires 25 for every MiVerse task, including base tasks and `_l`/`_s` variants,
+as configured in `task/MiVerse/config/_task.yml`. A partial native evaluation is marked `FAIL`
 and is not skipped by resume. `PASS` describes evaluation completion, not policy
 task success.
 Single-task `eval` and `client` also exit nonzero when the simulator exhausts
@@ -296,11 +296,15 @@ For MiVerse, `--env-cfg` on `summarize` filters the saved `config_name`;
 launch commands use it to select the profile stem. Both values are `miverse`
 in the default `env_cfg/miverse.yml` profile.
 MiVerse summaries select the run containing the most recently modified
-`_result.json` for each experiment/task/seed, breaking modification-time ties
-by run-directory name. An incomplete or invalid latest result remains incomplete
-instead of falling back to an older result. Full scoring covers 24 tasks and
-seeds `0,1,2` (72 task/seed cells), requiring 50 valid episode records per base
-task and 25 per `_l`/`_s` variant at each seed.
+`_result.json` across all directories for each decoded experiment/task/seed,
+including plain, `urlencoded:`, and legacy `sha256:` labels that identify the
+same experiment. Ties use the run-directory name, then the experiment-directory
+name. An incomplete or invalid
+latest result remains incomplete instead of falling back to an older result.
+Full scoring covers 24 tasks and seeds `0,1,2` (72 task/seed cells), requiring
+25 valid episode records per task at each seed, as configured in
+`task/MiVerse/config/_task.yml`. All MiVerse `±` values use population standard
+deviations across seeds, in both the overview and detailed task tables.
 
 ## CPU validation
 
