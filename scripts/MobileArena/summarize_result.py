@@ -39,15 +39,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..")))
 
 from env.benchmark import decode_result_info
-from utils.benchmark_names import canonical_benchmark, canonical_profile
 
 ROOT = os.environ.get(
     "MOBILE_ARENA_EVAL_ROOT",
-    os.environ.get("MIVERSE_EVAL_ROOT")
-    or os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "eval_result", "MobileArena")),
+    os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "eval_result", "MobileArena")),
 )
 OUTPUT_MD = os.path.join(ROOT, "_summary.md")
-RESULT_ROOTS = None
 
 SEED_RE = re.compile(r"^(\d+)_")
 EXPECTED_SEEDS = [0, 1, 2]
@@ -151,38 +148,37 @@ def load_entries(ts_dir):
 
 def scan_task(task, ckpt=None, action_type=None, env_cfg=None):
     """Return {(experiment, seed): entries}, keeping result configurations apart."""
+    task_path = os.path.join(ROOT, task)
     latest = {}
-    for result_root in RESULT_ROOTS or [ROOT]:
-        task_path = os.path.join(result_root, task)
-        for policy in list_subdirs(task_path):
-            policy_path = os.path.join(task_path, policy)
-            for embodiment in list_subdirs(policy_path):
-                if env_cfg is not None and canonical_profile(embodiment) != canonical_profile(env_cfg):
+    for policy in list_subdirs(task_path):
+        policy_path = os.path.join(task_path, policy)
+        for embodiment in list_subdirs(policy_path):
+            if env_cfg is not None and embodiment != env_cfg:
+                continue
+            emb_path = os.path.join(policy_path, embodiment)
+            for run in list_subdirs(emb_path):
+                m = SEED_RE.match(run)
+                if not m:
                     continue
-                emb_path = os.path.join(policy_path, embodiment)
-                for run in list_subdirs(emb_path):
-                    m = SEED_RE.match(run)
-                    if not m:
-                        continue
-                    seed = int(m.group(1))
-                    if seed not in EXPECTED_SEEDS:
-                        continue
-                    ts_dir = latest_timestamp_dir(os.path.join(emb_path, run))
-                    if ts_dir is None:
-                        continue
-                    directory_info = run[m.end():]
-                    # Use the same identity for plain/encoded labels and legacy hashes.
-                    # Select before reading JSON so even a broken newest hashed result
-                    # blocks fallback to an older result under another directory label.
-                    if directory_info.startswith("sha256:"):
-                        identity = directory_info
-                    else:
-                        run_info = decode_result_info(directory_info)
-                        identity = "sha256:" + hashlib.sha256(run_info.encode("utf-8")).hexdigest()
-                    key = (policy, canonical_profile(embodiment), identity, seed)
-                    candidate = (result_recency_key(ts_dir), directory_info, ts_dir)
-                    if key not in latest or candidate[0] > latest[key][0]:
-                        latest[key] = candidate
+                seed = int(m.group(1))
+                if seed not in EXPECTED_SEEDS:
+                    continue
+                ts_dir = latest_timestamp_dir(os.path.join(emb_path, run))
+                if ts_dir is None:
+                    continue
+                directory_info = run[m.end():]
+                # Use the same identity for plain/encoded labels and legacy hashes.
+                # Select before reading JSON so even a broken newest hashed result
+                # blocks fallback to an older result under another directory label.
+                if directory_info.startswith("sha256:"):
+                    identity = directory_info
+                else:
+                    run_info = decode_result_info(directory_info)
+                    identity = "sha256:" + hashlib.sha256(run_info.encode("utf-8")).hexdigest()
+                key = (policy, embodiment, identity, seed)
+                candidate = (result_recency_key(ts_dir), directory_info, ts_dir)
+                if key not in latest or candidate[0] > latest[key][0]:
+                    latest[key] = candidate
 
     out = {}
     for (policy, embodiment, _identity, seed), (_recency, directory_info, ts_dir) in latest.items():
@@ -219,12 +215,11 @@ def stats(entries):
     return count, successes / count * 100.0, score_sum / count * 100.0
 
 
-def main(root=None, output=None, ckpt=None, action_type=None, env_cfg=None, roots=None):
-    global ROOT, OUTPUT_MD, TASKS, TASK_EPISODES, TOTAL_REQUIRED, RESULT_ROOTS
+def main(root=None, output=None, ckpt=None, action_type=None, env_cfg=None):
+    global ROOT, OUTPUT_MD, TASKS, TASK_EPISODES, TOTAL_REQUIRED
     ROOT = root or ROOT
-    RESULT_ROOTS = roots or [ROOT]
     OUTPUT_MD = output or os.path.join(ROOT, "_summary.md")
-    if not any(os.path.isdir(path) for path in RESULT_ROOTS):
+    if not os.path.isdir(ROOT):
         raise SystemExit(
             f"Eval result directory not found: {ROOT}\n"
             "Use --root, set MOBILE_ARENA_EVAL_ROOT, or create eval_result/MobileArena."
@@ -488,14 +483,10 @@ def cli(argv=None):
     parser = argparse.ArgumentParser(
         description="Summarize completed MobileArena evaluation results."
     )
-    parser.add_argument(
-        "--dataset", type=canonical_benchmark, choices=("MobileArena",),
-        default="MobileArena", help=argparse.SUPPRESS,
-    )
+    parser.add_argument("--dataset", choices=("MobileArena",), default="MobileArena", help=argparse.SUPPRESS)
     parser.add_argument(
         "--root",
-        help="Result root containing task directories. Default: scan eval_result/MobileArena and "
-             "legacy eval_result/MiVerse; MOBILE_ARENA_EVAL_ROOT (legacy: MIVERSE_EVAL_ROOT) selects a single root.",
+        help="Result root containing task directories; defaults to MOBILE_ARENA_EVAL_ROOT or eval_result/MobileArena.",
     )
     parser.add_argument("--output", help="Markdown output path (default: <root>/_summary.md).")
     parser.add_argument("--ckpt", help="Only include this exact ckpt_name from result directory names.")
@@ -504,16 +495,14 @@ def cli(argv=None):
         "--env-cfg", help="Only include this saved result config_name (e.g. mobile_arena)."
     )
     args = parser.parse_args(argv)
-    explicit_root = args.root or os.environ.get("MOBILE_ARENA_EVAL_ROOT") or os.environ.get("MIVERSE_EVAL_ROOT")
-    default_parent = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "eval_result"))
-    root = os.path.abspath(os.path.expanduser(explicit_root or os.path.join(default_parent, "MobileArena")))
-    # Only the default scan combines legacy and current benchmark roots.
-    # Explicit roots remain isolated, including when both trees exist.
-    roots = [root] if explicit_root else [root, os.path.join(default_parent, "MiVerse")]
+    root = os.path.abspath(os.path.expanduser(args.root or os.environ.get(
+        "MOBILE_ARENA_EVAL_ROOT",
+        os.path.join(SCRIPT_DIR, "..", "..", "eval_result", "MobileArena"),
+    )))
     output = os.path.abspath(os.path.expanduser(args.output or os.path.join(root, "_summary.md")))
     main(
         root=root, output=output, ckpt=args.ckpt,
-        action_type=args.action_type, env_cfg=args.env_cfg, roots=roots,
+        action_type=args.action_type, env_cfg=args.env_cfg,
     )
 
 

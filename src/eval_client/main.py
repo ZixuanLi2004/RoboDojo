@@ -87,10 +87,8 @@ args_cli = parser.parse_args()
 from env.benchmark import BenchmarkPaths
 from env.global_configs import ENV_CONFIG_PATH, ROOT_DIR
 from task import task_registry
-from utils.benchmark_names import canonical_profile
 from utils.load_file import load_yaml
 
-args_cli.env_cfg_type = canonical_profile(args_cli.env_cfg_type)
 eval_profile = load_yaml(os.path.join(ENV_CONFIG_PATH, args_cli.env_cfg_type + ".yml"))
 benchmark_paths = BenchmarkPaths.from_config(eval_profile)
 

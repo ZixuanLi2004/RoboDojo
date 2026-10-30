@@ -288,13 +288,6 @@ if saved_mode != sys.argv[14]:
     raise SystemExit(f"Cannot resume: summary execution_mode={saved_mode!r}, requested {sys.argv[14]!r}.")
 keys = ("benchmark", "env_cfg", "config_name", "policy", "ckpt", "action_type", "seed", "eval_num")
 expected = dict(zip(keys, sys.argv[3:11]))
-sys.path.insert(0, sys.argv[13])
-from utils.benchmark_names import canonical_benchmark, canonical_profile
-if canonical_benchmark(payload.get("benchmark")) == "MobileArena":
-    payload["benchmark"] = "MobileArena"
-    for key in ("env_cfg", "config_name"):
-        if key in payload:
-            payload[key] = canonical_profile(payload[key])
 missing = [key for key in keys if key not in payload]
 if missing and expected["benchmark"] == "RoboDojo" and not any(key in payload for key in keys[:-1]):
     # Older RoboDojo summaries stored experiment identity only in result paths.
@@ -723,20 +716,6 @@ run_eval_for_task() {
   local task_port="${6:-}"
   local task_run_id="${run_id}_${task}"
   local result_path="${ROOT_DIR}/eval_result/${dataset}/${task}/${policy_name}/${result_config}/${seed}_${result_info}/${task_run_id}/_result.json"
-  if [[ "${dataset}" == MobileArena ]]; then
-    result_path="$(python3 - "${ROOT_DIR}" "${dataset}" "${task}" "${policy_name}" "${result_config}" "${seed}" "${ckpt}" "${action_type}" "${task_run_id}" <<'PY'
-import os
-from pathlib import Path
-import sys
-os.chdir(sys.argv[1])
-sys.path.insert(0, sys.argv[1])
-from env.benchmark import BenchmarkPaths
-cfg = dict(zip(("task_name", "policy_name", "config_name", "seed"), sys.argv[3:7]))
-cfg["additional_info"] = f"ckpt_name={sys.argv[7]},action_type={sys.argv[8]}"
-print((BenchmarkPaths(sys.argv[2]).resumed_result_dir(cfg, sys.argv[9]) / "_result.json").absolute())
-PY
-)"
-  fi
   local log_path="${log_dir}/${task}.log"
   local rc elapsed eval_time message start_sec end_sec
 

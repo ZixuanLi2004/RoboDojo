@@ -12,8 +12,6 @@ from typing import Any
 
 from benchmark_profile import BENCHMARKS, ROOT_DIR
 
-from utils.benchmark_names import canonical_benchmark
-
 # Canonical capability groups from https://robodojo-benchmark.com/doc/sim-tasks/.
 # Generalization tasks also have runnable ``*_random`` configurations; those
 # inherit the dimension of their base task in _task_records().
@@ -167,7 +165,6 @@ def _inventory_counts(tasks: list[dict[str, Any]], config_only: list[str]) -> di
 
 
 def build_inventory(bench: str = "RoboDojo") -> dict[str, Any]:
-    bench = canonical_benchmark(bench)
     if bench not in BENCHMARKS:
         raise ValueError(f"Unknown benchmark {bench!r}")
     task_dir = ROOT_DIR / "task" / bench / "tasks"
@@ -251,7 +248,7 @@ def _print_dimensions(inventory: dict[str, Any], output_format: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bench", "--dataset", type=canonical_benchmark, choices=tuple(BENCHMARKS), default="RoboDojo")
+    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="RoboDojo")
     parser.add_argument(
         "--format",
         choices=("plain", "json", "markdown"),

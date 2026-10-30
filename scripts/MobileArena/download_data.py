@@ -13,8 +13,7 @@ from pathlib import Path, PurePosixPath
 import re
 import sys
 
-# Published ModelScope dataset ID; keep until the remote dataset is renamed.
-DEFAULT_REPO = "ridiculouslzx/MiVerse"
+DEFAULT_REPO = "ridiculouslzx/MobileArena"
 DEFAULT_DIR = Path(__file__).resolve().parents[2] / "data" / "MobileArena"
 INSTALL_HINT = "python3 -m pip install -U 'modelscope-hub>=0.5.0'"
 

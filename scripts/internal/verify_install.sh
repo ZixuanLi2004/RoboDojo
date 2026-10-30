@@ -140,15 +140,7 @@ check_path file "${ROOT_DIR}/scripts/evaluate.sh" "benchmark launcher"
 check_path file "${ROOT_DIR}/scripts/internal/task_inventory.py" "task inventory helper"
 check_path file "${ROOT_DIR}/env_cfg/${env_cfg}.yml" "env_cfg"
 check_path file "${ROOT_DIR}/task/${dataset}/config/${task_name}.yml" "task config"
-layout_root="$(python3 - "${ROOT_DIR}" "${dataset}" "${config_name}" <<'PY'
-import sys
-from pathlib import Path
-sys.path.insert(0, sys.argv[1])
-from utils.benchmark_names import existing_benchmark_path
-print(existing_benchmark_path(Path(sys.argv[1]) / "Assets", "Eval_Layout", *sys.argv[2:]))
-PY
-)"
-check_path dir "${layout_root}" "eval layouts"
+check_path dir "${ROOT_DIR}/Assets/Eval_Layout/${dataset}/${config_name}" "eval layouts"
 if asset_info="$(python3 "${ROOT_DIR}/scripts/internal/check_assets.py" \
   --root "${ROOT_DIR}" --bench "${dataset}" --env-cfg "${env_cfg}" \
   --task "${task_name}" --seed "${seed}" --eval-num "${eval_num}" 2>&1)"; then
@@ -167,10 +159,9 @@ import sys
 root = Path(sys.argv[1])
 sys.path.insert(0, str(root / "scripts" / "internal"))
 from benchmark_profile import expected_episode_count
-from utils.benchmark_names import existing_benchmark_path
 
 bench, config_name, task, seed, requested = sys.argv[2:]
-layout_dir = existing_benchmark_path(root / "Assets", "Eval_Layout", bench, config_name, seed)
+layout_dir = root / "Assets" / "Eval_Layout" / bench / config_name / seed
 try:
     required = expected_episode_count(bench, task, requested)
     pattern = re.compile(rf"{re.escape(task)}_\d+\.json")
@@ -228,14 +219,12 @@ from pathlib import Path
 import sys
 import yaml
 
-from utils.benchmark_names import canonical_benchmark
-
 root = Path(sys.argv[1])
 env_cfg = sys.argv[2]
 dataset = sys.argv[3]
 cfg_path = root / "env_cfg" / f"{env_cfg}.yml"
 cfg = yaml.safe_load(cfg_path.read_text()) or {}
-if canonical_benchmark(cfg.get("benchmark", "RoboDojo")) != dataset:
+if cfg.get("benchmark", "RoboDojo") != dataset:
     raise SystemExit(f"env_cfg {env_cfg!r} uses benchmark {cfg.get('benchmark', 'RoboDojo')!r}, not {dataset!r}")
 refs = cfg.get("config", {})
 required = [

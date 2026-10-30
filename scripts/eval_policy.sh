@@ -68,8 +68,6 @@ for var_name in root_dir task_name env_cfg_type device_id policy_name port; do
 done
 
 cd "$root_dir" || exit 1
-# Direct policy launchers can still supply a saved profile name.
-env_cfg_type="$(python3 -c 'import sys; from utils.benchmark_names import canonical_profile; print(canonical_profile(sys.argv[1]))' "$env_cfg_type")"
 # Config file path
 cfg_file="./env_cfg/${env_cfg_type}.yml"
 if [[ ! -f "$cfg_file" ]]; then

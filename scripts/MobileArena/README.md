@@ -1,34 +1,5 @@
 # MobileArena evaluation scripts
 
-MobileArena was previously named MiVerse. Use `--bench MobileArena` and the
-`mobile_arena` environment profile for new evaluations. Existing checkpoint
-run directories named `MiVerse-...-miverse-...` remain readable. Source modules, scripts and configuration filenames use
-`mobile_arena`.
-Persisted model normalization keys and published dataset subdirectories retain
-their original identifiers for checkpoint/data compatibility. Do not rename
-checkpoint contents.
-
-New results are written to `eval_result/MobileArena/.../mobile_arena/`. The default
-summary scans both that tree and `eval_result/MiVerse/`, treating `miverse` and
-`mobile_arena` as the same profile. It chooses the latest result across both trees;
-a damaged or incomplete latest result never falls back to an older one. An explicit
-`--root` (or result-root environment variable) restricts the scan to that root.
-`MOBILE_ARENA_EVAL_ROOT` takes precedence over the legacy `MIVERSE_EVAL_ROOT`.
-
-Assets may use either `MobileArena/mobile_arena` or `MiVerse/miverse` directory
-names. Readers prefer new paths when present and otherwise use existing legacy
-paths. Shared assets, USD references, raw datasets and old results are not moved.
-The asset downloader accepts both names in the source repository and preserves
-the source paths. The published ModelScope source remains `ridiculouslzx/MiVerse`;
-its default local destination is `data/MobileArena/`.
-
-Legacy arguments `--bench MiVerse` and `--env-cfg miverse` still normalize to
-MobileArena. Use `scripts/evaluate.sh` or `scripts/MobileArena/mobile_arena.sh`;
-old source-file entry points have been removed. To resume an old batch,
-pass its original summary with `--summary ... --resume`; experiment identity is
-checked after normalizing the benchmark/profile names. Other settings must match.
-
-
 Use the shared benchmark CLI from the repository root:
 
 ```bash
@@ -103,7 +74,7 @@ conda activate RoboDojo
 ## Download the ModelScope dataset
 
 The token-authenticated downloader uses
-[`ridiculouslzx/MiVerse`](https://modelscope.cn/datasets/ridiculouslzx/MiVerse/tree/master)
+[`ridiculouslzx/MobileArena`](https://modelscope.cn/datasets/ridiculouslzx/MobileArena/tree/master)
 at revision `master`. Install the optional
 [ModelScope Hub SDK](https://github.com/modelscope/modelscope_hub) in the Python
 environment used to run the downloader:
@@ -188,7 +159,7 @@ the shared CLI defaults to `ee` and does not convert one model layout into anoth
 | [FastWAM](../../XPolicyLab/policy/FastWAM/README.md) | `joint` | MobileArena 45D joint layout and matching dataset statistics |
 | [MM_ABC](../../XPolicyLab/policy/MM_ABC/README.md) | `joint` | MobileArena M92UW `m75` or `c80`, selected from checkpoint metadata |
 | [MoPA](../../XPolicyLab/policy/MoPA/README.md) | `joint` | MobileArena `mopa75` contract used by the included deploy configuration |
-| [OpenWAM](../../XPolicyLab/policy/OpenWAM/README.md) | `ee` | MobileArena EE45 mapping in an 80D OpenWAM checkpoint, with `mobile_arena_ee` data config and compatible legacy normalization keys |
+| [OpenWAM](../../XPolicyLab/policy/OpenWAM/README.md) | `ee` | MobileArena EE45 mapping in an 80D OpenWAM checkpoint, with `mobile_arena_ee` data config and matching normalization keys |
 | [Pi_05](../../XPolicyLab/policy/Pi_05/README.md) | `joint` | Current 45D MobileArena joint layout; old 75D checkpoints are incompatible |
 | [Xiaomi_Robotics_1](../../XPolicyLab/policy/Xiaomi_Robotics_1/README.md) | `ee` | MobileArena official-state 60D XR1 checkpoint, with 39 active action dimensions |
 | [demo_policy](../../XPolicyLab/policy/demo_policy/README.md) | `joint` or `ee` | No weights; holds observed posture and commands zero base velocity |
