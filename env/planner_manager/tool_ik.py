@@ -1,4 +1,4 @@
-"""MiVerse control-group routing for per-step tool IK."""
+"""MobileArena control-group routing for per-step tool IK."""
 
 from collections.abc import Mapping
 from copy import deepcopy
@@ -68,7 +68,7 @@ class ToolIKPlanner:
             ) from None
 
     def resolve_control_group(self, target_frames, *, group_name=None, default_group=None):
-        """Select MiVerse's exact frame match, or its smallest unique superset."""
+        """Select MobileArena's exact frame match, or its smallest unique superset."""
         frames = [str(frame) for frame in target_frames]
         target_set = set(frames)
         if group_name is not None:

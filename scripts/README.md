@@ -1,17 +1,17 @@
 # Benchmark scripts
 
-RoboDojo and MiVerse use one CLI and shared evaluation scripts. Run commands
+RoboDojo and MobileArena use one CLI and shared evaluation scripts. Run commands
 from the repository root and select the benchmark with `--bench`:
 
 ```bash
 bash scripts/evaluate.sh <command> --bench RoboDojo [options]
-bash scripts/evaluate.sh <command> --bench MiVerse [options]
+bash scripts/evaluate.sh <command> --bench MobileArena [options]
 ```
 
 RoboDojo is the default. `--dataset` remains an alias for `--bench`.
-`bash scripts/MiVerse/miverse.sh <command>` remains a thin compatibility alias
-for MiVerse. For MiVerse assets, profiles, and scoring,
-see the [MiVerse guide](MiVerse/README.md).
+`bash scripts/MobileArena/mobile_arena.sh <command>` remains a thin compatibility alias
+for MobileArena. For MobileArena assets, profiles, and scoring,
+see the [MobileArena guide](MobileArena/README.md).
 
 ## Public entry points
 
@@ -19,25 +19,25 @@ see the [MiVerse guide](MiVerse/README.md).
 | --- | --- |
 | [evaluate.sh](evaluate.sh) | Shared CLI: `doctor`, `eval`, `server`, `client`, `smoke`, `benchmark`, `dimensions`, `summarize`, `tasks` |
 | [install.sh](install.sh) | One-time environment setup (conda, Isaac Sim, submodules) |
-| [init_assets.sh](init_assets.sh) | Download assets for `--bench RoboDojo`, `MiVerse`, or `all` (default: `all`) |
-| [MiVerse/download_data.sh](MiVerse/download_data.sh) | Download `ridiculouslzx/MiVerse` from ModelScope using a token, parallel files and large-file range threads; [usage](MiVerse/README.md#download-the-modelscope-dataset) |
+| [init_assets.sh](init_assets.sh) | Download assets for `--bench RoboDojo`, `MobileArena`, or `all` (default: `all`) |
+| [MobileArena/download_data.sh](MobileArena/download_data.sh) | Download `ridiculouslzx/MobileArena` from ModelScope using a token, parallel files and large-file range threads; [usage](MobileArena/README.md#download-the-modelscope-dataset) |
 | [eval_policy.sh](eval_policy.sh) | Isaac Sim eval client (called by `evaluate.sh client` and XPolicyLab) |
 
 Benchmark metadata selects the task directory, default environment profile,
 result directories, and summary implementation. RoboDojo defaults to `arx_x5`;
-MiVerse uses the `miverse` profile with `config_name: miverse` for layouts and
+MobileArena uses the `mobile_arena` profile with `config_name: mobile_arena` for layouts and
 results. Both use the `RoboDojo` simulator Conda environment. An explicit
 `--env-cfg` must belong to the selected benchmark. The policy runs in its own
 environment: `--policy-env` does not install dependencies or activate the
 simulator for standalone `client` commands.
 
-| Command | RoboDojo | MiVerse |
+| Command | RoboDojo | MobileArena |
 | --- | --- | --- |
 | `tasks`, `doctor` | Task inventory and preflight checks | Task inventory and preflight checks |
 | `eval` | One task with a fresh local policy server | Same |
 | `server`, `client` | Split evaluation; omit `--task` for batch workers | Same |
 | `smoke`, `benchmark` | Task filters, GPU grouping, logs, resume | Same |
-| `summarize` | Original RoboDojo scoring | MiVerse's 24-task, three-seed scoring |
+| `summarize` | Original RoboDojo scoring | MobileArena's 24-task, three-seed scoring |
 | `dimensions` / `--dimension` | Five RoboDojo capability dimensions | Not applicable; use task filters |
 
 ## Download assets
@@ -47,7 +47,7 @@ Run the asset downloader after installing the simulator environment:
 ```bash
 bash scripts/init_assets.sh                  # both benchmarks (default: all)
 bash scripts/init_assets.sh --bench RoboDojo # RoboDojo only
-bash scripts/init_assets.sh --bench MiVerse  # MiVerse only
+bash scripts/init_assets.sh --bench MobileArena  # MobileArena only
 bash scripts/init_assets.sh --help
 ```
 
@@ -69,7 +69,7 @@ Both benchmarks use the same source, with these environment overrides:
 The source stores packages under `Assets/`. The selected revision must contain
 all packages required by the requested benchmark; the downloader fails with a
 missing-package error otherwise. In particular, use a revision containing
-MiVerse assets for `--bench MiVerse` or `--bench all`.
+MobileArena assets for `--bench MobileArena` or `--bench all`.
 
 Completion is checked against the source file list and sizes, and unresolved
 Git LFS pointers are rejected. Empty directories do not count as downloaded
@@ -91,7 +91,7 @@ evaluate.sh client --bench <NAME>  ->  scripts/eval_policy.sh  ->  src/eval_clie
 
 Use `bash scripts/evaluate.sh server --help` and
 `bash scripts/evaluate.sh client --help` for split-evaluation options.
-The [MiVerse split example](MiVerse/README.md#split-server-and-client) shows
+The [MobileArena split example](MobileArena/README.md#split-server-and-client) shows
 matching benchmark, policy, profile, checkpoint label, action type, seed, and
 port on both sides. `client` runs in the active simulator environment and does
 not load or change the server's checkpoint; its `--ckpt` / `--action-type`
@@ -101,8 +101,8 @@ Inspect tasks or validate an installation for either benchmark:
 
 ```bash
 bash scripts/evaluate.sh tasks --bench RoboDojo --check
-bash scripts/evaluate.sh tasks --bench MiVerse --check
-bash scripts/evaluate.sh doctor --bench MiVerse \
+bash scripts/evaluate.sh tasks --bench MobileArena --check
+bash scripts/evaluate.sh doctor --bench MobileArena \
   --task place_bread_in_oven --seed 0 --eval-num native --skip-policy
 ```
 
@@ -121,7 +121,7 @@ runtime precedence. Match `--action-type` and `--seed` to the evaluation
 (`--action-type` defaults to `ee`). For example:
 
 ```bash
-bash scripts/evaluate.sh doctor --bench MiVerse \
+bash scripts/evaluate.sh doctor --bench MobileArena \
   --task place_bread_in_oven --policy-dir XPolicyLab/policy/Pi_05 \
   --ckpt /path/to/checkpoint --action-type joint --seed 0 --eval-num 1
 ```
@@ -147,7 +147,7 @@ bash scripts/evaluate.sh benchmark --bench RoboDojo \
 Available RoboDojo dimensions are `generalization`, `memory`, `precision`,
 `long-horizon`, and `open`. Generalization includes both the 12 standard tasks
 and their 12 runnable `_random` layout variants. Combine `--dimension` with
-`--only` or `--tasks-file` to narrow a dimension further. MiVerse has 24 tasks
+`--only` or `--tasks-file` to narrow a dimension further. MobileArena has 24 tasks
 (eight base tasks and their `_l`/`_s` variants) and no capability dimensions;
 select its tasks with `--only`, `--tasks-file`, or `--limit`.
 
@@ -164,7 +164,7 @@ Grouping depends on the selected benchmark and environment profile:
 
 - **RoboDojo / `arx_x5`:** retains the original measured runtime weights and
   grouping behavior. The weights are stored in `internal/benchmark_groups.py`.
-- **MiVerse:** has no measured runtime weights. Tasks are assigned round robin
+- **MobileArena:** has no measured runtime weights. Tasks are assigned round robin
   by task count; equal task counts do not guarantee equal execution time.
 - Profiles without runtime weights also use round-robin task assignment.
 
@@ -184,8 +184,8 @@ conda activate RoboDojo
 
 Real policies need their own installation and compatible weights. Choose
 `--action-type` explicitly: the CLI defaults to `ee`, while several included
-MiVerse adapters require `joint`. See the
-[compatibility list](MiVerse/README.md#policy-and-action-compatibility).
+MobileArena adapters require `joint`. See the
+[compatibility list](MobileArena/README.md#policy-and-action-compatibility).
 
 Preview a RoboDojo sweep:
 
@@ -200,10 +200,10 @@ bash scripts/evaluate.sh benchmark --bench RoboDojo \
   --dry-run
 ```
 
-Preview all 24 MiVerse tasks split across four GPUs:
+Preview all 24 MobileArena tasks split across four GPUs:
 
 ```bash
-bash scripts/evaluate.sh benchmark --bench MiVerse \
+bash scripts/evaluate.sh benchmark --bench MobileArena \
   --policy-dir XPolicyLab/policy/demo_policy \
   --ckpt demo \
   --policy-env demo-policy \
@@ -216,9 +216,9 @@ bash scripts/evaluate.sh benchmark --bench MiVerse \
 Remove `--dry-run` to launch. A batch task passes validation only when its process
 exits successfully and `_result.json` has a valid integer `eval_time` covering
 the requested episode count, capped by that task's native count. For example,
-MiVerse `--eval-num 1` requires one completed episode, while `--eval-num native`
-requires 25 for every MiVerse task, including base tasks and `_l`/`_s` variants,
-as configured in `task/MiVerse/config/_task.yml`. A partial native evaluation is marked `FAIL`
+MobileArena `--eval-num 1` requires one completed episode, while `--eval-num native`
+requires 25 for every MobileArena task, including base tasks and `_l`/`_s` variants,
+as configured in `task/MobileArena/config/_task.yml`. A partial native evaluation is marked `FAIL`
 and is not skipped by resume. `PASS` describes evaluation completion, not policy
 task success.
 Single-task `eval` and `client` also exit nonzero when the simulator exhausts
@@ -230,13 +230,13 @@ do not.
 controls simultaneous environments inside each simulator process:
 
 ```bash
-EVAL_NUM_ENVS=2 bash scripts/evaluate.sh eval --bench MiVerse \
+EVAL_NUM_ENVS=2 bash scripts/evaluate.sh eval --bench MobileArena \
   --policy-dir XPolicyLab/policy/Pi_05 --policy-env <POLICY_ENV> \
   --task place_bread_in_oven --ckpt <CHECKPOINT> \
   --action-type joint --eval-num 2
 ```
 
-MiVerse defaults to one environment. Parallel environments require an adapter
+MobileArena defaults to one environment. Parallel environments require an adapter
 with `eval_batch: true` and sufficient runtime resources. `demo_policy` declares
 `eval_batch: false`, so the client forces one environment even when overridden.
 The six learned adapters currently declare `eval_batch: true`; this is interface
@@ -245,7 +245,7 @@ support, not a guarantee that a given GPU/checkpoint can run every batch size.
 ### Logs and resume
 
 Batch logs and status files default to `smoke_results/` for RoboDojo and
-`smoke_results/MiVerse/` for MiVerse.
+`smoke_results/MobileArena/` for MobileArena.
 Set `--run-id NAME` for a repeatable sweep identity, then rerun with `--resume`
 to skip completed tasks. Keep the same execution mode (`eval` or `client`),
 benchmark, profile, policy, checkpoint, action type, seed, and episode count.
@@ -263,27 +263,27 @@ not necessarily reset the model's RNG.
 
 ```bash
 bash scripts/evaluate.sh summarize --bench RoboDojo
-bash scripts/evaluate.sh summarize --bench MiVerse
+bash scripts/evaluate.sh summarize --bench MobileArena
 ```
 
 The shared command selects the summary script in the matching benchmark folder.
-RoboDojo and MiVerse keep their own scoring and completeness rules:
+RoboDojo and MobileArena keep their own scoring and completeness rules:
 
 | Benchmark | Summary script | Default output |
 | --- | --- | --- |
 | RoboDojo | [RoboDojo/summarize_result.py](RoboDojo/summarize_result.py) | `eval_result/RoboDojo/_summary.md` |
-| MiVerse | [MiVerse/summarize_result.py](MiVerse/summarize_result.py) | `eval_result/MiVerse/_summary.md` |
+| MobileArena | [MobileArena/summarize_result.py](MobileArena/summarize_result.py) | `eval_result/MobileArena/_summary.md` |
 
 When an adapter accepts a checkpoint path, pass the original path to `--ckpt`.
 Result directory labels containing path separators are percent-encoded with a
 `urlencoded:` prefix so the experiment remains in one directory. Model loading
-still receives the original checkpoint argument; MiVerse summary filters also
+still receives the original checkpoint argument; MobileArena summary filters also
 accept that original value, including its full path.
 Encoded labels exceeding 200 bytes are rejected; use a shorter checkpoint name
 or path. This keeps result labels reversible without adding metadata to `_result.json`.
 
 See the
-[MiVerse guide](MiVerse/README.md#result-summaries) for its three-seed aggregation
+[MobileArena guide](MobileArena/README.md#result-summaries) for its three-seed aggregation
 and result filters.
 
 RoboDojo selects the most recently modified `_result.json` for each
@@ -292,10 +292,10 @@ the outer run label. This supports custom `--run-id` values. Insufficient
 episodes or invalid JSON in the latest result leave the cell incomplete;
 the summary does not fall back to an older result.
 
-For MiVerse, `--env-cfg` on `summarize` filters the saved `config_name`;
-launch commands use it to select the profile stem. Both values are `miverse`
-in the default `env_cfg/miverse.yml` profile.
-MiVerse summaries select the run containing the most recently modified
+For MobileArena, `--env-cfg` on `summarize` filters the saved `config_name`;
+launch commands use it to select the profile stem. Both values are `mobile_arena`
+in the default `env_cfg/mobile_arena.yml` profile.
+MobileArena summaries select the run containing the most recently modified
 `_result.json` across all directories for each decoded experiment/task/seed,
 including plain, `urlencoded:`, and legacy `sha256:` labels that identify the
 same experiment. Ties use the run-directory name, then the experiment-directory
@@ -303,7 +303,7 @@ name. An incomplete or invalid
 latest result remains incomplete instead of falling back to an older result.
 Full scoring covers 24 tasks and seeds `0,1,2` (72 task/seed cells), requiring
 25 valid episode records per task at each seed, as configured in
-`task/MiVerse/config/_task.yml`. All MiVerse `±` values use population standard
+`task/MobileArena/config/_task.yml`. All MobileArena `±` values use population standard
 deviations across seeds, in both the overview and detailed task tables.
 
 ## CPU validation

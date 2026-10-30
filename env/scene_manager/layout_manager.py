@@ -279,7 +279,9 @@ class LayoutManager:
             cat_name = random.choice(room_dirs)
         else:
             cat_name = room_cfg.get("default", "base0")
-        room_dir = os.path.join(ASSETS_PATH, "Room", cat_name)
+        from utils.benchmark_names import room_asset_path
+
+        room_dir = room_asset_path(ASSETS_PATH, cat_name)
         usd_files = [f for f in os.listdir(room_dir) if f.endswith(".usd")]
         if len(usd_files) == 0:
             raise ValueError(f"No USD files found in {room_dir} for room category {cat_name}.")

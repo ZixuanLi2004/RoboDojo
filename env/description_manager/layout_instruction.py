@@ -1,4 +1,4 @@
-"""Restore MiVerse language variants from the evaluated scene layout."""
+"""Restore MobileArena language variants from the evaluated scene layout."""
 
 
 class LayoutInstructionMixin:

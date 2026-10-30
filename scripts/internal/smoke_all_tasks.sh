@@ -51,7 +51,7 @@ Options:
   --mode NAME         Internal runner mode: eval, client, or server (default: eval).
   --only a,b,c        Comma-separated task subset.
   --tasks-file PATH   Newline-separated task subset. Comments and blank lines are ignored.
-  --dimension NAMES  RoboDojo capability dimensions; MiVerse accepts only all.
+  --dimension NAMES  RoboDojo capability dimensions; MobileArena accepts only all.
   --gpu-ids IDS       Balanced multi-GPU sweep. Comma-separated ids, reused for policy+env.
   --policy-gpu-ids IDS  Optional per-worker policy GPU ids. Defaults to --gpu-ids.
   --env-gpu-ids IDS     Optional per-worker env GPU ids. Defaults to --gpu-ids.
@@ -60,13 +60,13 @@ Options:
   --dry-run           Print eval commands and mark tasks DRY_RUN without launching eval.
   --all               Explicitly run all runnable tasks (default when --only is omitted).
   --limit NUM         Run only the first NUM tasks after filtering.
-  --summary PATH      JSON summary (RoboDojo: smoke_results/; MiVerse: smoke_results/MiVerse/)
+  --summary PATH      JSON summary (RoboDojo: smoke_results/; MobileArena: smoke_results/MobileArena/)
   --markdown PATH     Markdown summary (same default directory as --summary)
   --run-id ID         Stable run id used in result paths and summaries.
   --eval-num NUM      Episode count for each task (default: 1). Use `native` to use per-task counts from _task.yml.
-  --bench NAME        Benchmark: RoboDojo (default) or MiVerse; --dataset is an alias.
+  --bench NAME        Benchmark: RoboDojo (default) or MobileArena; --dataset is an alias.
   --ckpt NAME         Policy checkpoint name (required)
-  --env-cfg NAME      Profile stem (default: arx_x5 for RoboDojo, miverse for MiVerse)
+  --env-cfg NAME      Profile stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
   --expert-num NUM    Expert data count argument (default: 100)
   --action-type NAME  Policy action type (default: ee)
   --seed NUM          Eval seed / layout seed (default: 0)
@@ -83,9 +83,9 @@ Options:
   -h, --help          Show this help
 
 Examples:
-  bash scripts/internal/smoke_all_tasks.sh --bench MiVerse --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --only place_kettle_on_tv_stand
-  bash scripts/internal/smoke_all_tasks.sh --bench MiVerse --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --dimension all
-  bash scripts/internal/smoke_all_tasks.sh --bench MiVerse --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --eval-num native --gpu-ids 0,1,2,3
+  bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --only place_kettle_on_tv_stand
+  bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --dimension all
+  bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --eval-num native --gpu-ids 0,1,2,3
 EOF
 }
 
@@ -288,6 +288,13 @@ if saved_mode != sys.argv[14]:
     raise SystemExit(f"Cannot resume: summary execution_mode={saved_mode!r}, requested {sys.argv[14]!r}.")
 keys = ("benchmark", "env_cfg", "config_name", "policy", "ckpt", "action_type", "seed", "eval_num")
 expected = dict(zip(keys, sys.argv[3:11]))
+sys.path.insert(0, sys.argv[13])
+from utils.benchmark_names import canonical_benchmark, canonical_profile
+if canonical_benchmark(payload.get("benchmark")) == "MobileArena":
+    payload["benchmark"] = "MobileArena"
+    for key in ("env_cfg", "config_name"):
+        if key in payload:
+            payload[key] = canonical_profile(payload[key])
 missing = [key for key in keys if key not in payload]
 if missing and expected["benchmark"] == "RoboDojo" and not any(key in payload for key in keys[:-1]):
     # Older RoboDojo summaries stored experiment identity only in result paths.
@@ -716,6 +723,20 @@ run_eval_for_task() {
   local task_port="${6:-}"
   local task_run_id="${run_id}_${task}"
   local result_path="${ROOT_DIR}/eval_result/${dataset}/${task}/${policy_name}/${result_config}/${seed}_${result_info}/${task_run_id}/_result.json"
+  if [[ "${dataset}" == MobileArena ]]; then
+    result_path="$(python3 - "${ROOT_DIR}" "${dataset}" "${task}" "${policy_name}" "${result_config}" "${seed}" "${ckpt}" "${action_type}" "${task_run_id}" <<'PY'
+import os
+from pathlib import Path
+import sys
+os.chdir(sys.argv[1])
+sys.path.insert(0, sys.argv[1])
+from env.benchmark import BenchmarkPaths
+cfg = dict(zip(("task_name", "policy_name", "config_name", "seed"), sys.argv[3:7]))
+cfg["additional_info"] = f"ckpt_name={sys.argv[7]},action_type={sys.argv[8]}"
+print((BenchmarkPaths(sys.argv[2]).resumed_result_dir(cfg, sys.argv[9]) / "_result.json").absolute())
+PY
+)"
+  fi
   local log_path="${log_dir}/${task}.log"
   local rc elapsed eval_time message start_sec end_sec
 

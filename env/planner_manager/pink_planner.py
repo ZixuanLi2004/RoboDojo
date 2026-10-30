@@ -1,4 +1,4 @@
-"""MiVerse per-step multi-tool IK for evaluation."""
+"""MobileArena per-step multi-tool IK for evaluation."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def _locked_joint_positions(kinematics: Mapping) -> dict[str, float]:
 class PinkPlanner:
     """Integrate one measured-state IK step for the configured tool frames.
 
-    Keeps MiVerse's posture, command-continuity and joint-limit behavior.
+    Keeps MobileArena's posture, command-continuity and joint-limit behavior.
     M92UW evaluation disables self-collision checking in its robot config.
     """
 

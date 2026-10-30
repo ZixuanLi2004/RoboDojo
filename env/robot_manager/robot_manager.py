@@ -102,7 +102,7 @@ class RobotManager:
 
     @staticmethod
     def _apply_room_robot_pose(config, room_name):
-        """Apply the selected MiVerse room's authored pose before constructing robots."""
+        """Apply the selected MobileArena room's authored pose before constructing robots."""
         navigation = config.task_env.get("Navigation", {})
         if not navigation:
             return None

@@ -196,7 +196,7 @@ class BaseEnv(gym.Env):
         This function will be called after simulation context is created
         """
         self.physics_interface = acquire_physx_interface()
-        # MiVerse selects CPU PhysX explicitly; preserve RoboDojo's GPU default.
+        # MobileArena selects CPU PhysX explicitly; preserve RoboDojo's GPU default.
         overwrite_gpu_setting = int(self.config.get("overwrite_gpu_setting", 1))
         if overwrite_gpu_setting not in (-1, 0, 1):
             raise ValueError(f"overwrite_gpu_setting must be -1, 0, or 1, got {overwrite_gpu_setting}.")

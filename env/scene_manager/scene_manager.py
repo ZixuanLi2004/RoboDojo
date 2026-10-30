@@ -584,7 +584,7 @@ class SceneManager:
             return ArticulationObject(
                 env_origin=self.sim.scene.env_origins[env_id],
                 # Legacy RoboDojo assets also set false but kept their authored world joints.
-                release_fixed_base=self.benchmark == "MiVerse",
+                release_fixed_base=self.benchmark == "MobileArena",
                 **{k: v for k, v in base_args.items() if k != "primitive_type"},
             )
         else:

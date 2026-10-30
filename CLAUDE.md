@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-RoboDojo is a unified sim-and-real robotics benchmark built on NVIDIA Isaac Sim / IsaacLab. This fork adds **MiVerse as a separate benchmark** on that foundation. Policy evaluation runs via XPolicyLab and the shared simulation stack.
+RoboDojo is a unified sim-and-real robotics benchmark built on NVIDIA Isaac Sim / IsaacLab. This fork adds **MobileArena as a separate benchmark** on that foundation. Policy evaluation runs via XPolicyLab and the shared simulation stack.
 
-Project boundary: preserve the original RoboDojo tasks, task configs, reward/success logic, and scoring semantics. Do not refactor or modify them while adding or maintaining MiVerse. Use the shared `scripts/evaluate.sh` CLI with `--bench RoboDojo|MiVerse` for task selection, validation, launches, and batch evaluation. Keep benchmark-specific metadata and scoring separate; shared-stack changes must remain compatible with RoboDojo.
+Project boundary: preserve the original RoboDojo tasks, task configs, reward/success logic, and scoring semantics. Do not refactor or modify them while adding or maintaining MobileArena. Use the shared `scripts/evaluate.sh` CLI with `--bench RoboDojo|MobileArena` for task selection, validation, launches, and batch evaluation. Keep benchmark-specific metadata and scoring separate; shared-stack changes must remain compatible with RoboDojo.
 
 Contributors maintain **Tasks** (scene + reward logic), shared **env** / **env_cfg** configs, and eval infrastructure under **scripts/** and **src/eval_client/**.
 
-Human-facing docs: [MiVerse](scripts/MiVerse/README.md) and [original RoboDojo](https://robodojo-benchmark.com/doc/).
+Human-facing docs: [MobileArena](scripts/MobileArena/README.md) and [original RoboDojo](https://robodojo-benchmark.com/doc/).
 
 ## Repository Layout
 
@@ -17,10 +17,10 @@ task/RoboDojo/
   config/<task_name>.yml     task scene/object config
   tasks/<task_name>.py       task logic (inherits TaskEnv)
   demos/                     non-inventory demos (e.g. dlc)
-task/MiVerse/                added mobile manipulation task logic and configs
+task/MobileArena/                added mobile manipulation task logic and configs
 task/task_registry.py        shared benchmark-scoped dynamic task loader
 scripts/RoboDojo/            RoboDojo scoring and download helpers
-scripts/MiVerse/             MiVerse scoring, guide, compatibility CLI alias
+scripts/MobileArena/             MobileArena scoring, guide, compatibility CLI alias
 env/                         TaskEnv backbone and managers
 env_cfg/                     robot / scene / sim / camera YAML
 src/eval_client/             eval client (main.py, eval_env.py)
@@ -37,7 +37,7 @@ eval_result/                 runtime eval output
 
 | Own in RoboDojo | Own in XPolicyLab |
 | :-- | :-- |
-| `env/`, `env_cfg/`, `task/RoboDojo/`, `task/MiVerse/`, `src/eval_client/` | Policy code, checkpoints, `deploy.yml`, policy server |
+| `env/`, `env_cfg/`, `task/RoboDojo/`, `task/MobileArena/`, `src/eval_client/` | Policy code, checkpoints, `deploy.yml`, policy server |
 | `scripts/evaluate.sh`, `scripts/eval_policy.sh` | `XPolicyLab/policy/<POLICY>/eval.sh`, `setup_eval_*` scripts |
 | `utils/`, install/assets scripts | Policy-specific dependencies and training |
 
@@ -47,11 +47,11 @@ eval_result/                 runtime eval output
 
 ## Eval Commands & Flow
 
-**CLI** (`bash scripts/evaluate.sh <command> --bench RoboDojo|MiVerse`):
+**CLI** (`bash scripts/evaluate.sh <command> --bench RoboDojo|MobileArena`):
 
 The default benchmark is RoboDojo; `--dataset` is a compatibility alias for
-`--bench`. `scripts/MiVerse/miverse.sh` is a thin compatibility entry point
-for MiVerse. Add benchmark metadata to the shared infrastructure instead of creating
+`--bench`. `scripts/MobileArena/mobile_arena.sh` is a thin compatibility entry point
+for MobileArena. Add benchmark metadata to the shared infrastructure instead of creating
 a separate task inventory, doctor, or batch runner for each benchmark. Defaults
 and summary dispatch live in `scripts/internal/benchmark_profile.py`; grouping
 and the existing RoboDojo runtime weights live in `scripts/internal/benchmark_groups.py`.
@@ -64,7 +64,7 @@ and the existing RoboDojo runtime weights live in `scripts/internal/benchmark_gr
 | `client` | Sim client only (connect to running server) |
 | `smoke` | Selected/all tasks, `EVAL_NUM=1` by default |
 | `benchmark` | Full sweep (`--eval-num native` or numeric); sequential unless GPU lists are supplied |
-| `dimensions` | List RoboDojo capability dimensions; MiVerse does not define dimensions |
+| `dimensions` | List RoboDojo capability dimensions; MobileArena does not define dimensions |
 | `summarize` | Aggregate `eval_result/` into markdown table |
 | `tasks` | List runnable tasks (maintainer inventory) |
 
@@ -80,7 +80,7 @@ evaluate.sh eval
 - Policy `eval.sh` must exist under `--policy-dir` (used for validation and optional `expert_num`); `evaluate.sh eval` does **not** invoke `eval.sh` directly.
 - Policy `setup_eval_*` scripts run with **CWD = policy directory** (relative paths in policies).
 - Default transport: **WebSocket** (`protocol: ws` in policy `deploy.yml`; see `scripts/eval_policy.sh`).
-- Explicitly choose the action contract. MiVerse FastWAM/Pi_05/MM_ABC/MoPA use `joint`; OpenWAM/Xiaomi_Robotics_1 use `ee`; demo supports either. Checkpoint layouts are adapter-specific even when their vectors have the same width.
+- Explicitly choose the action contract. MobileArena FastWAM/Pi_05/MM_ABC/MoPA use `joint`; OpenWAM/Xiaomi_Robotics_1 use `ee`; demo supports either. Checkpoint layouts are adapter-specific even when their vectors have the same width.
 - Policy installation is separate from simulator installation. The demo environment can be prepared with `conda create -n demo-policy python=3.11`, activation, then `bash XPolicyLab/policy/demo_policy/install.sh`.
 
 **Split eval:**
@@ -107,11 +107,11 @@ bash scripts/evaluate.sh smoke --policy-dir XPolicyLab/policy/<POLICY> --ckpt <C
 ```
 
 Multi-GPU batching uses the shared scheduler. Preserve RoboDojo's original
-`arx_x5` runtime weights and capability dimensions. MiVerse has no runtime
+`arx_x5` runtime weights and capability dimensions. MobileArena has no runtime
 weights and uses round-robin task assignment; do not describe it as balancing
 execution time. Result summaries dispatch to each benchmark's existing scoring
 implementation without changing score semantics: `scripts/RoboDojo/summarize_result.py`
-and `scripts/MiVerse/summarize_result.py`. Keep these implementations in their
+and `scripts/MobileArena/summarize_result.py`. Keep these implementations in their
 respective benchmark folders. The default output is
 `eval_result/<benchmark>/_summary.md`.
 
@@ -119,10 +119,10 @@ New code imports from `env.*`.
 
 ## Tasks
 
-MiVerse adds **24 tasks** under `task/MiVerse/`: eight base tasks and their `_l`
+MobileArena adds **24 tasks** under `task/MobileArena/`: eight base tasks and their `_l`
 (language) and `_s` (spatial) variants. Use
-`bash scripts/evaluate.sh tasks --bench MiVerse --check` to inspect them. Its default
-profile is `miverse`, with layout/result `config_name: miverse`.
+`bash scripts/evaluate.sh tasks --bench MobileArena --check` to inspect them. Its default
+profile is `mobile_arena`, with layout/result `config_name: mobile_arena`.
 The original RoboDojo inventory below remains unchanged:
 
 - **54 runnable task configs** (42 base + 12 `_random` generalization variants).
@@ -198,7 +198,7 @@ Use the **smallest loop** that proves the current change.
 ```bash
 bash -n scripts/evaluate.sh scripts/eval_policy.sh
 python scripts/internal/task_inventory.py --bench RoboDojo --format json --check
-python scripts/internal/task_inventory.py --bench MiVerse --format json --check
+python scripts/internal/task_inventory.py --bench MobileArena --format json --check
 python -m unittest discover -s tests -p 'test_*.py'
 ruff check .
 git diff --check
@@ -210,13 +210,13 @@ Isaac Sim or loading checkpoints. Do not describe dry runs or these tests as
 proof of GPU simulation, asset loading, Pink IK, or actual model inference.
 
 Asset checks require real assets. `scripts/init_assets.sh --bench
-RoboDojo|MiVerse|all` selects packages; its default is `all`, while the evaluation
+RoboDojo|MobileArena|all` selects packages; its default is `all`, while the evaluation
 CLI defaults to RoboDojo. Both benchmarks use the same Hugging Face asset
 source, configurable through `HF_REPO_ID`, `HF_REPO_URL`, and `HF_REVISION`.
 The selected revision must contain the requested benchmark's assets; missing
-packages must fail rather than appear ready. MiVerse needs complete
-`Assets/Object/MiVerse/`, `Assets/Room/MiVerse/`, `Assets/Robots/m92uw/`, and
-`Assets/Eval_Layout/MiVerse/miverse/<seed>/` packages, plus shared materials and
+packages must fail rather than appear ready. MobileArena needs complete
+`Assets/Object/MobileArena/`, `Assets/Room/MobileArena/`, `Assets/Robots/m92uw/`, and
+`Assets/Eval_Layout/MobileArena/mobile_arena/<seed>/` packages, plus shared materials and
 backgrounds. Download verification checks file lists, sizes, and unresolved
 Git LFS pointers; it does not prove GPU simulation or native layout coverage.
 Check each requested task/seed/count with `evaluate.sh doctor --bench BENCH
@@ -258,7 +258,7 @@ bash scripts/evaluate.sh eval \
 
 Smoke/benchmark acceptance: each task must exit `0` **and** write `_result.json`
 with a valid integer `eval_time >= min(requested, native)`. `native` uses the
-task's declared count in `_task.yml`: 50 for MiVerse base tasks and 25 for their
+task's declared count in `_task.yml`: 25 for all MobileArena base tasks and their
 `_l`/`_s` variants. Partial runs must fail completion checks and must not be skipped
 on resume. This is run completion, not policy task success.
 The simulator's single-task exit status follows the same completion requirement;
@@ -270,7 +270,7 @@ mode does not support resume. In split deployment, match these policy settings
 and the port mapping across server/client; standalone clients run in the active
 simulator environment and only label results with `--ckpt` / `--action-type`.
 
-MiVerse defaults to one environment per simulator; `EVAL_NUM_ENVS` overrides
+MobileArena defaults to one environment per simulator; `EVAL_NUM_ENVS` overrides
 that count when the adapter has `eval_batch: true`. `eval_batch: false` forces
 one environment. Multi-GPU groups are separate processes and must not be confused
 with parallel environments within a process.
@@ -281,10 +281,10 @@ run-directory name and outer run label for ties. Custom `--run-id` values must
 not determine chronology. Select before validating JSON or episode count so
 an incomplete latest result cannot fall back to an older complete run.
 
-MiVerse summaries use 24 tasks × seeds `0,1,2` (72 cells), requiring 50 valid
-episode records per base-task cell and 25 per `_l`/`_s` variant cell.
+MobileArena summaries use 24 tasks × seeds `0,1,2` (72 cells), requiring 25 valid
+episode records per base-task and `_l`/`_s` variant cell.
 `summarize --env-cfg` filters result `config_name`; launch `--env-cfg` selects
-the profile stem. Both values are `miverse` in the default profile. Select the
+the profile stem. Both values are `mobile_arena` in the default profile. Select the
 most recently modified `_result.json` per experiment/task/seed, breaking ties by
 run-directory name. Invalid or incomplete latest results must not silently fall
 back to older complete runs.
@@ -343,7 +343,7 @@ When creating a PR (`gh pr create`):
 - Camera config changes affecting all tasks without announcement
 - Treating a launcher exit code alone as sweep completion → also require `_result.json` to cover the effective requested episode count
 - Treating empty asset directories or a download check as proof of native layout coverage and GPU simulation
-- Mixing MiVerse `joint` / `ee` checkpoint layouts or confusing profile names with saved `config_name` values
+- Mixing MobileArena `joint` / `ee` checkpoint layouts or confusing profile names with saved `config_name` values
 - Editing policy logic in RoboDojo instead of XPolicyLab
 - Running policy `setup_eval_*` without CWD in the policy directory
 - Treating submodule content as owned by this repo unless explicitly updating the gitlink pin

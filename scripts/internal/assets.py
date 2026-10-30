@@ -15,21 +15,29 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-BENCHMARKS = ("RoboDojo", "MiVerse")
+sys.path.insert(0, str(ROOT))
+
+from utils.benchmark_names import (
+    benchmark_path_candidates,
+    canonical_benchmark,
+    existing_benchmark_path,
+)
+
+BENCHMARKS = ("RoboDojo", "MobileArena")
 SHARED = {"Material", "Background", "Sensor", "Traj"}
 REQUIRED = {
     "RoboDojo": (
         "Object/RoboDojo", "Eval_Layout/RoboDojo/arx_x5", "Robots/x5",
         "Robots/franka", "Room/Simple_Room", "Room/Simple_Room_nolight",
     ),
-    "MiVerse": (
-        "Object/MiVerse", "Eval_Layout/MiVerse/miverse", "Robots/m92uw", "Room/MiVerse",
+    "MobileArena": (
+        "Object/MobileArena", "Eval_Layout/MobileArena/mobile_arena", "Robots/m92uw", "Room/MobileArena",
     ),
 }
 ROBOT_FILES = {
     "RoboDojo": ("Robots/x5/ARX.usd", "Robots/x5/robot_config.yml",
                  "Robots/franka/Franka.usd", "Robots/franka/robot_config.yml"),
-    "MiVerse": ("Robots/m92uw/M92UW.usd", "Robots/m92uw/robot_config.yml"),
+    "MobileArena": ("Robots/m92uw/M92UW.usd", "Robots/m92uw/robot_config.yml"),
 }
 LFS_HEADER = b"version https://git-lfs.github.com/spec/v1"
 
@@ -43,19 +51,20 @@ def git(cache, *args, capture=False, input=None):
 
 
 def selected(path, benches):
+    benches = {canonical_benchmark(bench) for bench in benches}
     parts = Path(path).parts
     if parts[0] in SHARED:
         return True
     if len(parts) < 3:
         return False
     if parts[0] in {"Object", "Eval_Layout"}:
-        return parts[1] in benches
+        return canonical_benchmark(parts[1]) in benches
     if parts[0] == "Robots":
-        return ("MiVerse" in benches and parts[1] == "m92uw") or (
+        return ("MobileArena" in benches and parts[1] == "m92uw") or (
             "RoboDojo" in benches and parts[1] in {"x5", "franka"}
         )
     if parts[0] == "Room":
-        return ("MiVerse" if parts[1] == "MiVerse" else "RoboDojo") in benches
+        return ("MobileArena" if canonical_benchmark(parts[1]) == "MobileArena" else "RoboDojo") in benches
     return False
 
 
@@ -96,13 +105,15 @@ def read_manifest(cache, revision, benches):
 
 
 def validate_source(manifest, benches):
+    benches = [canonical_benchmark(bench) for bench in benches]
     required = ["Material", "Background"]
     for bench in benches:
         required.extend(REQUIRED[bench])
     missing = []
     for prefix in required:
+        prefixes = tuple(str(path) + "/" for path in benchmark_path_candidates("", *Path(prefix).parts))
         if not any(
-            path.startswith(prefix + "/") and entry["size"] > 0
+            path.startswith(prefixes) and entry["size"] > 0
             and Path(path).name not in {".gitkeep", ".DS_Store"}
             and Path(path).suffix.lower() not in {".md", ".txt"}
             for path, entry in manifest.items()
@@ -116,7 +127,7 @@ def validate_source(manifest, benches):
             "Selected source/revision is missing required benchmark assets:\n  "
             + "\n  ".join(sorted(set(missing)))
             + "\nChoose a source/revision containing the selected benchmarks "
-            "(HF_REPO_URL / HF_REPO_ID / HF_REVISION), or select --bench RoboDojo or MiVerse."
+            "(HF_REPO_URL / HF_REPO_ID / HF_REVISION), or select --bench RoboDojo or MobileArena."
         )
 
 
@@ -218,11 +229,11 @@ def download(root, requested):
         )
     state_path = cache / ".git/robodojo_assets.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
-    previous = state.get("benchmarks", [])
+    previous = [canonical_benchmark(bench) for bench in state.get("benchmarks", [])]
     # Preserve assets installed by the old script, which has no state file.
     if not state_path.exists() and target.is_symlink() and target.resolve() == (cache / "Assets").resolve():
         for bench in BENCHMARKS:
-            package = cache / "Assets/Object" / bench
+            package = existing_benchmark_path(cache / "Assets", "Object", bench)
             if package.is_dir() and any(
                 path.is_file() and path.stat().st_size > 0 and not placeholder_file(path)
                 and path.suffix.lower() not in {".md", ".txt"} and path.name != ".gitkeep"
@@ -268,7 +279,7 @@ def main():
         prog="bash scripts/init_assets.sh", description=__doc__,
         epilog="Source: HF_REPO_URL or HF_REPO_ID (default RoboDojo-Benchmark/RoboDojo); HF_REVISION defaults to main.",
     )
-    parser.add_argument("--bench", choices=("all", *BENCHMARKS), default="all",
+    parser.add_argument("--bench", type=canonical_benchmark, choices=("all", *BENCHMARKS), default="all",
                         help="Assets to download (default: all). Previously downloaded benchmarks are retained.")
     args = parser.parse_args()
     try:

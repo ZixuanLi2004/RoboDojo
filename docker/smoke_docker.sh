@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end Docker procedure runner + live monitor for RoboDojo and MiVerse.
+# End-to-end Docker procedure runner + live monitor for RoboDojo and MobileArena.
 #
 # It drives (and asserts) the whole containerized eval loop so you can see the
 # whole procedure is working:
@@ -15,7 +15,7 @@
 #   bash docker/smoke_docker.sh clean      # stop leftover server, prune smoke logs
 #
 # Everything is overridable via env (task/profile default to the selected bench):
-#   ROBODOJO_SMOKE_BENCH=RoboDojo     # or MiVerse
+#   ROBODOJO_SMOKE_BENCH=RoboDojo     # or MobileArena
 #   ROBODOJO_IMAGE=robodojo:cuda12.8  ROBODOJO_SMOKE_TASK=stack_bowls
 #   ROBODOJO_SMOKE_POLICY=demo_policy ROBODOJO_SMOKE_PORT=6060
 #   ROBODOJO_SMOKE_ENV_CFG=arx_x5     ROBODOJO_SMOKE_ACTION_TYPE=joint

@@ -87,8 +87,10 @@ args_cli = parser.parse_args()
 from env.benchmark import BenchmarkPaths
 from env.global_configs import ENV_CONFIG_PATH, ROOT_DIR
 from task import task_registry
+from utils.benchmark_names import canonical_profile
 from utils.load_file import load_yaml
 
+args_cli.env_cfg_type = canonical_profile(args_cli.env_cfg_type)
 eval_profile = load_yaml(os.path.join(ENV_CONFIG_PATH, args_cli.env_cfg_type + ".yml"))
 benchmark_paths = BenchmarkPaths.from_config(eval_profile)
 
@@ -352,7 +354,7 @@ def main():
     env_cfg.sim.seed = [0 for _ in range(num_envs)]
     run_id = os.environ["ROBODOJO_RUN_ID"]
     resume_state = _load_resume_manifest(eval_cfg, run_id)
-    if benchmark_paths.name == "MiVerse":
+    if benchmark_paths.name == "MobileArena":
         from src.eval_client.nav_eval_env import create_nav_eval_env
 
         env = create_nav_eval_env(env_cfg, simulation_app, resume_state=resume_state)

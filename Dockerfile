@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# RoboDojo / MiVerse simulator evaluation image (Ubuntu 22.04 + CUDA 12.8).
+# RoboDojo / MobileArena simulator evaluation image (Ubuntu 22.04 + CUDA 12.8).
 #
 # Scope: this image contains ONLY the RoboDojo simulation-evaluation side
 # (Isaac Sim, IsaacLab, CuRobo, the RoboDojo Python stack) plus the lightweight
@@ -193,7 +193,7 @@ COPY XPolicyLab/ /workspace/RoboDojo/XPolicyLab/
 COPY pyproject.toml README.md LICENSE /workspace/RoboDojo/
 
 # main.py preloads Pinocchio before Kit; use the same compatible stack as the
-# native installer, including MiVerse's Pink IK dependencies.
+# native installer, including MobileArena's Pink IK dependencies.
 RUN bash scripts/install.sh --from pink
 
 # ── Strip broken submodule .git pointers ─────────────────────────────────────

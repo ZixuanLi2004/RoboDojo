@@ -1,4 +1,4 @@
-"""MiVerse evaluation lifecycle and whole-body control scheduling.
+"""MobileArena evaluation lifecycle and whole-body control scheduling.
 
 Resolve qpos/qvel once from measured state and hold the frame throughout the
 collection interval. Chassis velocities use the direct_velocity channel.

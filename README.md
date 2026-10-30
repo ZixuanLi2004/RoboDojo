@@ -8,27 +8,27 @@
 
 </div>
 
-## This fork: RoboDojo + MiVerse
+## This fork: RoboDojo + MobileArena
 
-This repository builds on RoboDojo and adds **MiVerse as a separate benchmark**.
+This repository builds on RoboDojo and adds **MobileArena as a separate benchmark**.
 The original RoboDojo tasks, configurations, and scoring semantics are preserved;
-MiVerse adds 24 mobile manipulation tasks using the shared simulation stack:
+MobileArena adds 24 mobile manipulation tasks using the shared simulation stack:
 eight base tasks and their `_l` (language) and `_s` (spatial) variants.
 
 Both benchmarks use `bash scripts/evaluate.sh <command> --bench <NAME>`:
 
-- **MiVerse:** pass `--bench MiVerse`; see the [MiVerse guide](scripts/MiVerse/README.md).
+- **MobileArena:** pass `--bench MobileArena`; see the [MobileArena guide](scripts/MobileArena/README.md).
 - **RoboDojo:** pass `--bench RoboDojo` (the default); see the [CLI guide](scripts/README.md) and [official documentation](https://robodojo-benchmark.com/doc/).
 
 Task discovery, environment checks, single-task launch, and batch scheduling are
 shared. Benchmark-specific task definitions and scoring remain separate.
-`scripts/MiVerse/miverse.sh` remains a compatibility alias for MiVerse.
+`scripts/MobileArena/mobile_arena.sh` remains a compatibility alias for MobileArena.
 
 This fork uses [ZixuanLi2004/XPolicyLab](https://github.com/ZixuanLi2004/XPolicyLab)
 for policy integration; see its [README](XPolicyLab/README.md) for the adapters
 included here. The RoboDojo overview, news, leaderboard, and citations below
 refer to the original benchmark. For this fork, start with the
-[quick start](#miverse-quick-start) and [shared CLI guide](scripts/README.md);
+[quick start](#mobilearena-quick-start) and [shared CLI guide](scripts/README.md);
 upstream policy counts and examples describe the broader upstream project.
 
 https://private-user-images.githubusercontent.com/88101805/619409345-cc074c5d-4567-4418-8a29-1385aaba9d5b.mp4
@@ -61,7 +61,7 @@ https://private-user-images.githubusercontent.com/88101805/619409345-cc074c5d-45
 
 ## 📚 Documentation
 
-For the added benchmark, see the [MiVerse guide](scripts/MiVerse/README.md).
+For the added benchmark, see the [MobileArena guide](scripts/MobileArena/README.md).
 The [RoboDojo documentation](https://robodojo-benchmark.com/doc/) remains the canonical reference for the original RoboDojo benchmark. Key sections:
 
 | Section | Description |
@@ -75,7 +75,7 @@ The [RoboDojo documentation](https://robodojo-benchmark.com/doc/) remains the ca
 | [Configurations](https://robodojo-benchmark.com/doc/usage/configurations/) | Simulator, scene, robot, and camera configuration options. |
 | [Common Issues](https://robodojo-benchmark.com/doc/common-issue/) | Troubleshooting for installation, assets, GPU memory, and evaluation. |
 
-## MiVerse quick start
+## MobileArena quick start
 
 The simulator installer targets **Linux x86_64**, an NVIDIA GPU, and Python 3.11.
 Run these commands from the repository root. Policy dependencies are installed
@@ -87,10 +87,10 @@ cd RoboDojo
 git submodule update --init --recursive
 bash scripts/install.sh --install
 conda activate RoboDojo
-bash scripts/init_assets.sh --bench MiVerse
+bash scripts/init_assets.sh --bench MobileArena
 ```
 
-`init_assets.sh --bench MiVerse` downloads MiVerse objects, rooms, robots, and
+`init_assets.sh --bench MobileArena` downloads MobileArena objects, rooms, robots, and
 saved layouts together with shared assets. To prepare both benchmarks, use the
 default `bash scripts/init_assets.sh` (equivalent to `--bench all`); use
 `--bench RoboDojo` for RoboDojo alone. Both use the same Hugging Face asset
@@ -98,7 +98,7 @@ source, configured through `HF_REPO_ID`, `HF_REPO_URL`, and `HF_REVISION`.
 The selected revision must contain the requested benchmark's assets; missing
 packages cause an error. These assets are not bundled with this checkout.
 See the [asset options](scripts/README.md#download-assets) and the
-[MiVerse asset layout](scripts/MiVerse/README.md#installation-and-assets).
+[MobileArena asset layout](scripts/MobileArena/README.md#installation-and-assets).
 
 Prepare the included weight-free demo policy, then check one task and preview
 its launch:
@@ -109,11 +109,11 @@ conda activate demo-policy
 bash XPolicyLab/policy/demo_policy/install.sh
 conda activate RoboDojo
 
-bash scripts/evaluate.sh tasks --bench MiVerse --check
-bash scripts/evaluate.sh doctor --bench MiVerse \
+bash scripts/evaluate.sh tasks --bench MobileArena --check
+bash scripts/evaluate.sh doctor --bench MobileArena \
   --task place_kettle_on_tv_stand --seed 0 --eval-num 1 \
   --policy-dir XPolicyLab/policy/demo_policy --policy-env demo-policy
-bash scripts/evaluate.sh eval --bench MiVerse \
+bash scripts/evaluate.sh eval --bench MobileArena \
   --policy-dir XPolicyLab/policy/demo_policy \
   --task place_kettle_on_tv_stand --ckpt demo --policy-env demo-policy \
   --action-type joint --seed 0 --eval-num 1 --dry-run
@@ -123,18 +123,18 @@ After the required assets and environments are ready, remove `--dry-run` for
 an actual one-episode interface check. `demo_policy` holds the observed posture
 and commands zero base velocity; it does not solve the task or load a checkpoint.
 For learned policies, install the selected adapter's dependencies and supply a
-compatible checkpoint. The [policy compatibility list](scripts/MiVerse/README.md#policy-and-action-compatibility)
+compatible checkpoint. The [policy compatibility list](scripts/MobileArena/README.md#policy-and-action-compatibility)
 specifies which adapters require `joint` or `ee`; the CLI default is `ee`.
 
-Selecting `--bench MiVerse` sets the default environment profile to
-`miverse` (`env_cfg/miverse.yml`), with `config_name: miverse` for layouts and
+Selecting `--bench MobileArena` sets the default environment profile to
+`mobile_arena` (`env_cfg/mobile_arena.yml`), with `config_name: mobile_arena` for layouts and
 results. Results are written under
-`eval_result/MiVerse/<task>/<policy>/miverse/`. Use the
-[MiVerse guide](scripts/MiVerse/README.md) for multi-GPU evaluation, split
+`eval_result/MobileArena/<task>/<policy>/mobile_arena/`. Use the
+[MobileArena guide](scripts/MobileArena/README.md) for multi-GPU evaluation, split
 server/client commands, resume, and the full 24-task × 3-seed summary.
 All 24 tasks, including the base tasks and `_l`/`_s` variants, require 25 episodes
-per seed, as configured in `task/MiVerse/config/_task.yml`.
-MiVerse supports every evaluation command; RoboDojo capability `dimensions`
+per seed, as configured in `task/MobileArena/config/_task.yml`.
+MobileArena supports every evaluation command; RoboDojo capability `dimensions`
 do not apply to its tasks. For the original benchmark, follow the
 [RoboDojo CLI guide](scripts/README.md).
 
@@ -145,11 +145,11 @@ With Python 3.11+, PyYAML, NumPy, and Bash 4+ available:
 ```bash
 python -m unittest discover -s tests -p 'test_*.py'
 bash scripts/evaluate.sh tasks --bench RoboDojo --check
-bash scripts/evaluate.sh tasks --bench MiVerse --check
+bash scripts/evaluate.sh tasks --bench MobileArena --check
 ```
 
 These checks cover CLI routing, scheduling, result handling, and selected
-MiVerse action-layout contracts. They do not start Isaac Sim or load learned
+MobileArena action-layout contracts. They do not start Isaac Sim or load learned
 policy weights. The current changes have been checked on CPU; GPU simulation,
 asset loading, Pink IK execution, and real checkpoint inference still require
 validation on a configured Linux evaluation machine. A successful dry run or
@@ -161,18 +161,18 @@ doctor check alone does not establish that runtime validation.
 env/                   simulator backbone and managers
 env_cfg/               simulator, scene, robot, and camera configs
 task/RoboDojo/         original RoboDojo tasks and task YAML configs
-task/MiVerse/          24 mobile manipulation tasks and configs (8 base + 16 variants)
+task/MobileArena/          24 mobile manipulation tasks and configs (8 base + 16 variants)
 src/eval_client/       shared simulator client
-scripts/evaluate.sh    shared CLI; select RoboDojo or MiVerse with --bench
+scripts/evaluate.sh    shared CLI; select RoboDojo or MobileArena with --bench
 scripts/internal/      shared task discovery, validation, launch, and batching
 scripts/RoboDojo/      RoboDojo scoring and download helpers
-scripts/MiVerse/       MiVerse scoring, guide, and compatibility CLI alias
+scripts/MobileArena/       MobileArena scoring, guide, and compatibility CLI alias
 scripts/eval_policy.sh shared simulator client entry
 XPolicyLab/            policy server and policy integrations
 Assets/                downloaded robot, object, room, material, and layout assets
 ```
 
-`evaluate.sh summarize --bench RoboDojo|MiVerse` selects the summary script in
+`evaluate.sh summarize --bench RoboDojo|MobileArena` selects the summary script in
 the matching benchmark folder and writes `eval_result/<benchmark>/_summary.md`
 by default. Each benchmark retains its own scoring and completeness rules.
 

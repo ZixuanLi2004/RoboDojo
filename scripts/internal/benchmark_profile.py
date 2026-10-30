@@ -5,8 +5,12 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT_DIR))
+
+from utils.benchmark_names import canonical_benchmark, canonical_profile
 
 # Only benchmark-specific defaults belong here; execution stays shared.
 BENCHMARKS = {
@@ -15,10 +19,10 @@ BENCHMARKS = {
         "default_task": "stack_bowls",
         "summary_script": "scripts/RoboDojo/summarize_result.py",
     },
-    "MiVerse": {
-        "default_env_cfg": "miverse",
+    "MobileArena": {
+        "default_env_cfg": "mobile_arena",
         "default_task": "place_bread_in_oven",
-        "summary_script": "scripts/MiVerse/summarize_result.py",
+        "summary_script": "scripts/MobileArena/summarize_result.py",
     },
 }
 
@@ -27,6 +31,7 @@ def expected_episode_count(bench: str, task: str, requested: str = "native") -> 
     """Match main.py's task default and cap for an explicit episode request."""
     import yaml
 
+    bench = canonical_benchmark(bench)
     if bench not in BENCHMARKS:
         raise ValueError(f"Unknown benchmark {bench!r}")
     path = ROOT_DIR / "task" / bench / "config" / "_task.yml"
@@ -43,6 +48,9 @@ def expected_episode_count(bench: str, task: str, requested: str = "native") -> 
 
 
 def resolve_profile(bench: str = "RoboDojo", env_cfg: str = "") -> tuple[str, str, str]:
+    bench = canonical_benchmark(bench)
+    if bench == "MobileArena":
+        env_cfg = canonical_profile(env_cfg)
     if bench not in BENCHMARKS:
         raise ValueError(f"Unknown benchmark {bench!r}; choose from {', '.join(BENCHMARKS)}.")
     try:
@@ -61,18 +69,18 @@ def resolve_profile(bench: str = "RoboDojo", env_cfg: str = "") -> tuple[str, st
     if not isinstance(profile, dict):
         raise ValueError(f"Invalid eval profile: {path}")
     # Original RoboDojo profiles omit the benchmark key.
-    profile_bench = profile.get("benchmark", "RoboDojo")
+    profile_bench = canonical_benchmark(profile.get("benchmark", "RoboDojo"))
     if profile_bench != bench:
         raise ValueError(f"--env-cfg {env_cfg} uses benchmark {profile_bench!r}, not {bench!r}.")
     config_name = profile.get("config_name")
     if not isinstance(config_name, str) or not config_name.strip():
         raise ValueError(f"Missing config_name in {path}")
-    return bench, env_cfg, config_name
+    return bench, env_cfg, canonical_profile(config_name) if bench == "MobileArena" else config_name
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="RoboDojo")
+    parser.add_argument("--bench", "--dataset", type=canonical_benchmark, choices=tuple(BENCHMARKS), default="RoboDojo")
     parser.add_argument("--env-cfg", default="", help="env_cfg stem; defaults to the selected benchmark's profile.")
     parser.add_argument(
         "--field",

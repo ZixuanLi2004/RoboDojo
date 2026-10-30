@@ -712,7 +712,7 @@ class CameraManager:
         return np.array([[fx, 0, cx], [0, fx, cy], [0, 0, 1]], dtype=np.float64)
 
     def get_camera_distortion(self, cam_id: int, env_id: int = 0) -> dict:
-        """Return the authored lens model and coefficients in MiVerse order."""
+        """Return the authored lens model and coefficients in MobileArena order."""
         prim = self._camera_prim(cam_id, env_id)
         model = None if prim is None else self._authored_projection_model(prim)
         if model is not None and self._is_opencv_pinhole_model(model):

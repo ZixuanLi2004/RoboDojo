@@ -1,4 +1,4 @@
-"""Apply MiVerse evaluation velocities to the M92UW floating root."""
+"""Apply MobileArena evaluation velocities to the M92UW floating root."""
 
 from __future__ import annotations
 

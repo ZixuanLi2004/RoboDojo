@@ -6,6 +6,9 @@ current_dir = os.path.dirname(current_file)
 ROOT_DIR = os.path.join(current_dir, "..")
 
 BENCHMARK = "RoboDojo"
+# Existing published assets and evaluation artifacts use these storage names.
+BENCHMARK_NAME_ALIASES = {"MiVerse": "MobileArena"}
+PROFILE_NAME_ALIASES = {"miverse": "mobile_arena"}
 ASSETS_PATH = os.path.join(ROOT_DIR, "Assets")
 OBJECTS_PATH = os.path.join(ROOT_DIR, f"Assets/Object/{BENCHMARK}")
 ROBOTS_PATH = os.path.join(ROOT_DIR, "Assets/Robots")

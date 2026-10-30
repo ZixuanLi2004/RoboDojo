@@ -1,4 +1,4 @@
-"""Oriented bounding-box collision proxies used by MiVerse reward predicates."""
+"""Oriented bounding-box collision proxies used by MobileArena reward predicates."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def oriented_bbox_prisms_intersect(
 ) -> bool:
     """Intersect convex XY projections and world Z intervals, including contact.
 
-    This prism approximation preserves arbitrary yaw and matches MiVerse's
+    This prism approximation preserves arbitrary yaw and matches MobileArena's
     upright mobile-robot and robot-vacuum collision proxies.
     """
     atol = float(atol)

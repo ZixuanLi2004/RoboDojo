@@ -114,7 +114,7 @@ def _set_gpu_partial_velocities(view, set_velocities, *, linear=None, angular=No
 
 
 def _wrap_gpu_split_velocity_writes(cls) -> None:
-    if getattr(cls, "_miverse_gpu_velocity_wrapped", False):
+    if getattr(cls, "_mobile_arena_gpu_velocity_wrapped", False):
         return
     orig_linear = cls.set_linear_velocities
     orig_angular = cls.set_angular_velocities
@@ -132,7 +132,7 @@ def _wrap_gpu_split_velocity_writes(cls) -> None:
 
     cls.set_linear_velocities = set_linear_velocities
     cls.set_angular_velocities = set_angular_velocities
-    cls._miverse_gpu_velocity_wrapped = True
+    cls._mobile_arena_gpu_velocity_wrapped = True
 
 
 def _patch_isaacsim_gpu_velocity_writes() -> None:
@@ -187,7 +187,7 @@ def _wrap_state_property(cls, name: str) -> None:
         value = orig_get(self)
         if not isinstance(value, torch.Tensor):
             return value
-        host_attr = f"_miverse_host_{name}"
+        host_attr = f"_mobile_arena_host_{name}"
         moved, cached = _copy_to_device(value, self.device, getattr(self, host_attr, None))
         if cached is not None:
             setattr(self, host_attr, cached)
@@ -203,7 +203,7 @@ def _wrap_state_property(cls, name: str) -> None:
 
 
 def _wrap_physx_view_writes(view) -> None:
-    if view is None or getattr(view, "_miverse_write_wrapped", False):
+    if view is None or getattr(view, "_mobile_arena_write_wrapped", False):
         return
     physx_device = _physx_view_device(view)
     for name in _PHYSX_VIEW_WRITES:
@@ -218,7 +218,7 @@ def _wrap_physx_view_writes(view) -> None:
             )
 
         setattr(view, name, _wrapped)
-    view._miverse_write_wrapped = True
+    view._mobile_arena_write_wrapped = True
 
 
 def _patch_articulation_data() -> None:
@@ -266,7 +266,7 @@ def _assign_host_target(buffer: np.ndarray, env_ids, joint_ids, target) -> None:
 
 def ensure_host_joint_targets(articulation) -> dict[str, np.ndarray] | None:
     """Cache CUDA joint targets on CPU; setters defer uploads until sim writes."""
-    host = getattr(articulation, "_miverse_host_joint_targets", None)
+    host = getattr(articulation, "_mobile_arena_host_joint_targets", None)
     if host is not None:
         return host
     if not _targets_live_on_cuda(articulation):
@@ -276,21 +276,21 @@ def ensure_host_joint_targets(articulation) -> dict[str, np.ndarray] | None:
         tensor = getattr(articulation.data, name, None)
         if isinstance(tensor, torch.Tensor):
             host[name] = as_numpy(tensor).copy()
-    articulation._miverse_host_joint_targets = host
-    articulation._miverse_host_targets_dirty = False
+    articulation._mobile_arena_host_joint_targets = host
+    articulation._mobile_arena_host_targets_dirty = False
     return host
 
 
 def flush_host_joint_targets(articulation) -> None:
     """Upload each target buffer once after the host control updates."""
-    host = getattr(articulation, "_miverse_host_joint_targets", None)
-    if host is None or not getattr(articulation, "_miverse_host_targets_dirty", False):
+    host = getattr(articulation, "_mobile_arena_host_joint_targets", None)
+    if host is None or not getattr(articulation, "_mobile_arena_host_targets_dirty", False):
         return
     for name, array in host.items():
         dest = getattr(articulation.data, name, None)
         if isinstance(dest, torch.Tensor):
             dest.copy_(torch.from_numpy(np.ascontiguousarray(array)))
-    articulation._miverse_host_targets_dirty = False
+    articulation._mobile_arena_host_targets_dirty = False
 
 
 def _to_isaac_index(ids, device):
@@ -322,7 +322,7 @@ def _prepare_isaac_joint_target(target, joint_ids, env_ids, like):
 
 def _wrap_joint_target_setters(cls) -> None:
     """Defer CUDA target uploads and normalize inputs for native CPU setters."""
-    if getattr(cls, "_miverse_joint_target_wrapped", False):
+    if getattr(cls, "_mobile_arena_joint_target_wrapped", False):
         return
     for method_name, attr in _JOINT_TARGET_SETTERS.items():
         orig = getattr(cls, method_name)
@@ -331,7 +331,7 @@ def _wrap_joint_target_setters(cls) -> None:
             host = ensure_host_joint_targets(self)
             if host is not None and attr in host:
                 _assign_host_target(host[attr], env_ids, joint_ids, target)
-                self._miverse_host_targets_dirty = True
+                self._mobile_arena_host_targets_dirty = True
                 return None
             target, joint_ids, env_ids = _prepare_isaac_joint_target(
                 target, joint_ids, env_ids, getattr(self.data, attr)
@@ -339,7 +339,7 @@ def _wrap_joint_target_setters(cls) -> None:
             return orig(self, target, joint_ids=joint_ids, env_ids=env_ids)
 
         setattr(cls, method_name, _wrapped)
-    cls._miverse_joint_target_wrapped = True
+    cls._mobile_arena_joint_target_wrapped = True
 
 
 def _patch_articulation_writes() -> None:
@@ -353,7 +353,7 @@ def _patch_articulation_writes() -> None:
         orig_initialize(self)
         _wrap_physx_view_writes(getattr(self, "root_physx_view", None))
         # IsaacLab can recreate target buffers when an articulation is rebound.
-        self._miverse_host_joint_targets = None
+        self._mobile_arena_host_joint_targets = None
         ensure_host_joint_targets(self)
 
     def write_data_to_sim(self):

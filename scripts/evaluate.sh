@@ -9,8 +9,8 @@ usage() {
 Usage: bash scripts/evaluate.sh <command> --bench NAME [options]
        bash scripts/evaluate.sh --bench NAME <command> [options]
 
-Benchmarks: RoboDojo (default), MiVerse. --dataset is an alias for --bench.
-Defaults: RoboDojo uses env profile arx_x5; MiVerse uses miverse.
+Benchmarks: RoboDojo (default), MobileArena. --dataset is an alias for --bench.
+Defaults: RoboDojo uses env profile arx_x5; MobileArena uses mobile_arena.
 The simulator environment defaults to RoboDojo for both benchmarks.
 
 Commands:
@@ -25,7 +25,7 @@ Commands:
   summarize   Aggregate results using the benchmark's existing scoring rules
 
 Batch commands share task filtering and multi-GPU scheduling. Run a command
-with --help for options. MiVerse/miverse.sh remains a compatibility alias.
+with --help for options. MobileArena/mobile_arena.sh remains a compatibility alias.
 EOF
 }
 
@@ -127,9 +127,9 @@ Required:
   --policy-env ENV      Policy conda env, uv, or env path
 
 Common options:
-  --bench NAME          RoboDojo (default) or MiVerse; --dataset is an alias
+  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
   --eval-num NUM|native  Override EVAL_NUM for this eval; use `native` for per-task counts from _task.yml
-  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, miverse for MiVerse)
+  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
   --expert-num NUM      Legacy policy argument (default: 100)
   --action-type NAME    Policy action type (default: ee)
   --seed NUM            Eval seed / layout seed (default: 0)
@@ -248,11 +248,11 @@ Required:
   --policy-env ENV      Policy conda env, uv, or env path
 
 Common options:
-  --bench NAME          RoboDojo (default) or MiVerse; --dataset is an alias
+  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
   --task TASK           Task passed to the policy server (omit for batch mode)
   --policy-port PORT    TCP port (auto-selected in single-task mode; required in batch)
   --bind-host HOST      Bind address (default: 0.0.0.0 for remote clients; use localhost for local-only)
-  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, miverse for MiVerse)
+  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
   --action-type NAME    Policy action type (default: ee)
   --seed NUM            Eval seed (default: 0)
   --policy-gpu ID       Policy server GPU (default: 0)
@@ -380,11 +380,11 @@ Required:
   --policy-port PORT     Policy server TCP port
 
 Common options:
-  --bench NAME          RoboDojo (default) or MiVerse; --dataset is an alias
+  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
   --task TASK           Selected benchmark task name (omit for batch mode)
   --policy-host HOST    Policy server host (default: 127.0.0.1)
   --eval-num NUM|native  Override EVAL_NUM for this run; `native` uses per-task counts
-  --env-cfg NAME         env_cfg stem (default: arx_x5 for RoboDojo, miverse for MiVerse)
+  --env-cfg NAME         env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
   --seed NUM             Eval seed / layout seed (default: 0)
   --env-gpu ID           Isaac Sim GPU (default: 0)
   --gpu-ids IDS          Worker GPU ids in batch mode; one id in single-task mode
@@ -574,7 +574,7 @@ Usage: bash scripts/evaluate.sh summarize --bench RoboDojo
 
 Uses the original RoboDojo aggregation rules and writes <result root>/_summary.md.
 Set ROBODOJO_EVAL_ROOT to override the default eval_result/RoboDojo result root.
-MiVerse has additional filters; see `evaluate.sh summarize --bench MiVerse --help`.
+MobileArena has additional filters; see `evaluate.sh summarize --bench MobileArena --help`.
 EOF
       return 0
     fi

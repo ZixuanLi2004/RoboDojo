@@ -11,6 +11,8 @@ from assets import LFS_HEADER
 from benchmark_profile import expected_episode_count
 import yaml
 
+from utils.benchmark_names import existing_benchmark_path, room_asset_path
+
 OBJECT_TYPES = ("Rigid", "Dynamic", "Geometry", "Articulation", "Garment", "Fluid")
 ROBOT_USDS = {"x5": "ARX.usd", "franka": "Franka.usd", "m92uw": "M92UW.usd"}
 
@@ -19,7 +21,7 @@ class AssetCheck:
     def __init__(self, root, bench):
         self.root = root
         self.assets = root / "Assets"
-        self.objects = self.assets / "Object" / bench
+        self.objects = existing_benchmark_path(self.assets, "Object", bench)
         self.errors = []
         self.checked = {}
 
@@ -103,7 +105,7 @@ class AssetCheck:
     def scene(self, config):
         room = config.get("Room")
         if room:
-            self.package(self.assets / "Room" / room.get("default", "base0"), "*.usd")
+            self.package(room_asset_path(self.assets, room.get("default", "base0")), "*.usd")
         background = config.get("Background")
         if background:
             name = background.get("category_name") or background.get("default", "brown_photostudio_02_16k.hdr")
@@ -178,7 +180,7 @@ def check_assets(root, bench, env_cfg, task, seed, eval_num):
     scene = check.mapping(root / "env_cfg" / "scene" / f"{refs.get('scene')}.yml")
     task_cfg = check.mapping(root / "task" / bench / "config" / f"{task}.yml")
     check.robots(robot)
-    layouts = root / "Assets" / "Eval_Layout" / bench / profile.get("config_name", env_cfg) / str(seed)
+    layouts = existing_benchmark_path(root / "Assets", "Eval_Layout", bench, profile.get("config_name", env_cfg), seed)
     pattern = re.compile(rf"{re.escape(task)}_\d+\.json")
     paths = sorted((path for path in layouts.glob("*.json") if pattern.fullmatch(path.name)),
                    key=lambda path: int(path.stem.rsplit("_", 1)[-1]))
