@@ -5,7 +5,7 @@ current_dir = os.path.dirname(current_file)
 
 ROOT_DIR = os.path.join(current_dir, "..")
 
-BENCHMARK = "RoboDojo"
+BENCHMARK = "MobileArena"
 ASSETS_PATH = os.path.join(ROOT_DIR, "Assets")
 OBJECTS_PATH = os.path.join(ROOT_DIR, f"Assets/Object/{BENCHMARK}")
 ROBOTS_PATH = os.path.join(ROOT_DIR, "Assets/Robots")

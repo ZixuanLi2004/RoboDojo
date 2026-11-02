@@ -12,117 +12,6 @@ from typing import Any
 
 from benchmark_profile import BENCHMARKS, ROOT_DIR
 
-# Canonical capability groups from https://robodojo-benchmark.com/doc/sim-tasks/.
-# Generalization tasks also have runnable ``*_random`` configurations; those
-# inherit the dimension of their base task in _task_records().
-DIMENSION_TASKS: dict[str, tuple[str, ...]] = {
-    "generalization": (
-        "stack_bowls",
-        "push_T",
-        "pack_objects_into_box",
-        "fold_clothes",
-        "hang_mugs",
-        "sweep_blocks",
-        "pour_liquid_into_cup",
-        "make_toast",
-        "arrange_largest_number",
-        "sort_nesting_dolls_by_size",
-        "store_laptop_and_headphones",
-        "stack_blocks",
-    ),
-    "memory": (
-        "cover_blocks",
-        "match_and_pick_from_conveyor",
-        "swap_blocks",
-        "swap_T",
-        "press_by_number",
-        "imitate_sorting_sequence",
-    ),
-    "precision": (
-        "fasten_screws",
-        "plug_in_charger",
-        "insert_tubes",
-        "pour_balls_into_vase",
-        "play_Xylophone",
-        "deposit_coin",
-        "insert_key",
-        "build_tower",
-    ),
-    "long-horizon": (
-        "fill_pen_holder",
-        "classify_objects",
-        "put_bottles_into_dustbin",
-        "play_tic_tac_toe",
-        "fill_egg_holder",
-        "organize_table",
-        "make_kong",
-        "play_stacking_toy",
-    ),
-    "open": (
-        "align_blocks",
-        "general_pickup",
-        "solve_equation",
-        "stack_blocks_by_language",
-        "classify_objects_by_language",
-        "pick_from_conveyor_by_image",
-        "store_tools_in_toolbox",
-        "pour_by_language",
-    ),
-}
-
-DIMENSION_ALIASES = {
-    "gen": "generalization",
-    "generalisation": "generalization",
-    "mem": "memory",
-    "long": "long-horizon",
-    "long_horizon": "long-horizon",
-    "longhorizon": "long-horizon",
-    "open-ended": "open",
-    "open_ended": "open",
-    "openended": "open",
-}
-
-
-def _dimension_for_task(name: str) -> str | None:
-    base_name = name.removesuffix("_random")
-    for dimension, tasks in DIMENSION_TASKS.items():
-        if base_name in tasks:
-            return dimension
-    return None
-
-
-def _parse_dimensions(values: list[str], bench: str = "RoboDojo") -> list[str]:
-    if bench != "RoboDojo":
-        if any(item.strip().lower() != "all" for value in values for item in value.split(",")):
-            raise ValueError(f"{bench} has no capability dimension groups; use --dimension all")
-        return []
-    dimensions = []
-    select_all = False
-    for value in values:
-        items = value.split(",")
-        if any(not item.strip() for item in items):
-            raise ValueError("dimension names must not be empty")
-        for item in items:
-            name = item.strip().lower()
-            name = DIMENSION_ALIASES.get(name, name)
-            if name == "all":
-                select_all = True
-                continue
-            if name not in DIMENSION_TASKS:
-                choices = ", ".join(DIMENSION_TASKS)
-                raise ValueError(f"unknown dimension '{item.strip()}' (choose from: {choices}, all)")
-            if name not in dimensions:
-                dimensions.append(name)
-    if select_all:
-        return list(DIMENSION_TASKS)
-    return dimensions
-
-
-def _normalized_dimension_names(dimensions: list[str]) -> list[str]:
-    if not dimensions or set(dimensions) == set(DIMENSION_TASKS):
-        return ["all"]
-    return dimensions
-
 
 def _module_classes(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -141,8 +30,7 @@ def _task_records(bench: str) -> list[dict[str, Any]]:
         config_path = config_dir / f"{name}.yml"
         record = {
             "name": name,
-            "dimension": _dimension_for_task(name) if bench == "RoboDojo" else None,
-            "variant": "random" if name.endswith("_random") else "standard",
+            "variant": "language" if name.endswith("_l") else "spatial" if name.endswith("_s") else "standard",
             "module": str(path.relative_to(ROOT_DIR)),
             "class_name": name,
             "class_exists": name in classes,
@@ -164,7 +52,7 @@ def _inventory_counts(tasks: list[dict[str, Any]], config_only: list[str]) -> di
     }
 
 
-def build_inventory(bench: str = "RoboDojo") -> dict[str, Any]:
+def build_inventory(bench: str = "MobileArena") -> dict[str, Any]:
     if bench not in BENCHMARKS:
         raise ValueError(f"Unknown benchmark {bench!r}")
     task_dir = ROOT_DIR / "task" / bench / "tasks"
@@ -193,8 +81,8 @@ def _print_plain(inventory: dict[str, Any], only_runnable: bool) -> None:
 
 
 def _print_markdown(inventory: dict[str, Any]) -> None:
-    print("| Task | Dimension | Variant | Runnable | Config | Issue |")
-    print("| --- | --- | --- | --- | --- | --- |")
+    print("| Task | Variant | Runnable | Config | Issue |")
+    print("| --- | --- | --- | --- | --- |")
     for task in inventory["tasks"]:
         issues = []
         if not task["class_exists"]:
@@ -202,7 +90,7 @@ def _print_markdown(inventory: dict[str, Any]) -> None:
         if not task["config_exists"]:
             issues.append("missing config")
         print(
-            f"| `{task['name']}` | {task['dimension'] or '-'} | {task['variant']} | "
+            f"| `{task['name']}` | {task['variant']} | "
             f"{'yes' if task['runnable'] else 'no'} | "
             f"`{task['config'] or '-'}` | {', '.join(issues) or '-'} |"
         )
@@ -212,43 +100,9 @@ def _print_markdown(inventory: dict[str, Any]) -> None:
             print(f"- `{name}`")
 
 
-def _print_dimensions(inventory: dict[str, Any], output_format: str) -> None:
-    runnable = [task for task in inventory["tasks"] if task["runnable"]]
-    rows = []
-    for dimension, canonical_tasks in DIMENSION_TASKS.items():
-        runtime_tasks = [task["name"] for task in runnable if task["dimension"] == dimension]
-        rows.append(
-            {
-                "dimension": dimension,
-                "canonical_count": len(canonical_tasks),
-                "runnable_count": len(runtime_tasks),
-                "tasks": list(canonical_tasks),
-                "runnable_tasks": runtime_tasks,
-            }
-        )
-    if output_format == "json":
-        print(json.dumps(rows, indent=2))
-    elif output_format == "markdown":
-        print("| Dimension | Canonical | Runnable configs | Tasks |")
-        print("| --- | ---: | ---: | --- |")
-        for row in rows:
-            print(
-                f"| {row['dimension']} | {row['canonical_count']} | {row['runnable_count']} | "
-                f"{', '.join(f'`{task}`' for task in row['tasks'])} |"
-            )
-    else:
-        for row in rows:
-            print(
-                f"{row['dimension']} ({row['canonical_count']} canonical, "
-                f"{row['runnable_count']} runnable configs)"
-            )
-            for task in row["runnable_tasks"]:
-                print(f"  {task}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="RoboDojo")
+    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="MobileArena")
     parser.add_argument(
         "--format",
         choices=("plain", "json", "markdown"),
@@ -261,58 +115,19 @@ def main() -> int:
         help="Only print runnable task names in plain output.",
     )
     parser.add_argument(
-        "--dimension",
-        action="append",
-        default=[],
-        metavar="NAME[,NAME...]",
-        help="Filter tasks by capability dimension; may be repeated (or use all).",
-    )
-    parser.add_argument(
-        "--list-dimensions",
-        action="store_true",
-        help="List the official capability dimensions and their tasks.",
-    )
-    parser.add_argument(
-        "--resolve-dimensions",
-        action="store_true",
-        help="Validate dimensions and print their canonical, de-duplicated names.",
-    )
-    parser.add_argument(
         "--check",
         action="store_true",
         help="Exit non-zero if any task is missing its config or exported class.",
     )
     args = parser.parse_args()
 
-    try:
-        selected_dimensions = _parse_dimensions(args.dimension, args.bench)
-        if args.list_dimensions and args.bench != "RoboDojo":
-            raise ValueError(f"{args.bench} has no capability dimension groups; use tasks to list all tasks")
-    except ValueError as exc:
-        parser.error(str(exc))
-
-    if args.resolve_dimensions:
-        print(",".join(_normalized_dimension_names(selected_dimensions)))
-        return 0
-
     inventory = build_inventory(args.bench)
-    if args.list_dimensions:
-        _print_dimensions(inventory, args.format)
+    if args.format == "json":
+        print(json.dumps(inventory, indent=2, sort_keys=True))
+    elif args.format == "markdown":
+        _print_markdown(inventory)
     else:
-        if selected_dimensions:
-            inventory = dict(inventory)
-            inventory["tasks"] = [
-                task for task in inventory["tasks"] if task["dimension"] in selected_dimensions
-            ]
-            inventory["counts"] = _inventory_counts(
-                inventory["tasks"], inventory["config_only"]
-            )
-        if args.format == "json":
-            print(json.dumps(inventory, indent=2, sort_keys=True))
-        elif args.format == "markdown":
-            _print_markdown(inventory)
-        else:
-            _print_plain(inventory, only_runnable=args.only_runnable)
+        _print_plain(inventory, only_runnable=args.only_runnable)
 
     if args.check:
         all_inventory = build_inventory(args.bench)
@@ -321,8 +136,6 @@ def main() -> int:
             issues = []
             if not task["runnable"]:
                 issues.append("not runnable")
-            if args.bench == "RoboDojo" and not task["dimension"]:
-                issues.append("missing capability dimension")
             if issues:
                 errors.append(f"Task {task['name']}: {', '.join(issues)}")
         errors.extend(f"Config {name} has no task module" for name in all_inventory["config_only"])

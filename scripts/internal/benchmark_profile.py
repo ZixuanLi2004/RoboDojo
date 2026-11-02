@@ -10,11 +10,6 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 # Only benchmark-specific defaults belong here; execution stays shared.
 BENCHMARKS = {
-    "RoboDojo": {
-        "default_env_cfg": "arx_x5",
-        "default_task": "stack_bowls",
-        "summary_script": "scripts/RoboDojo/summarize_result.py",
-    },
     "MobileArena": {
         "default_env_cfg": "mobile_arena",
         "default_task": "place_bread_in_oven",
@@ -42,7 +37,7 @@ def expected_episode_count(bench: str, task: str, requested: str = "native") -> 
     return min(int(requested), native)
 
 
-def resolve_profile(bench: str = "RoboDojo", env_cfg: str = "") -> tuple[str, str, str]:
+def resolve_profile(bench: str = "MobileArena", env_cfg: str = "") -> tuple[str, str, str]:
     if bench not in BENCHMARKS:
         raise ValueError(f"Unknown benchmark {bench!r}; choose from {', '.join(BENCHMARKS)}.")
     try:
@@ -60,8 +55,7 @@ def resolve_profile(bench: str = "RoboDojo", env_cfg: str = "") -> tuple[str, st
         raise ValueError(f"Invalid eval profile {path}: {exc}") from exc
     if not isinstance(profile, dict):
         raise ValueError(f"Invalid eval profile: {path}")
-    # Original RoboDojo profiles omit the benchmark key.
-    profile_bench = profile.get("benchmark", "RoboDojo")
+    profile_bench = profile.get("benchmark", "MobileArena")
     if profile_bench != bench:
         raise ValueError(f"--env-cfg {env_cfg} uses benchmark {profile_bench!r}, not {bench!r}.")
     config_name = profile.get("config_name")
@@ -72,7 +66,7 @@ def resolve_profile(bench: str = "RoboDojo", env_cfg: str = "") -> tuple[str, st
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="RoboDojo")
+    parser.add_argument("--bench", "--dataset", choices=tuple(BENCHMARKS), default="MobileArena")
     parser.add_argument("--env-cfg", default="", help="env_cfg stem; defaults to the selected benchmark's profile.")
     parser.add_argument(
         "--field",

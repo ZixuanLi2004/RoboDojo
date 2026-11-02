@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# RoboDojo / MobileArena simulator evaluation image (Ubuntu 22.04 + CUDA 12.8).
+# MobileArena simulator evaluation image (Ubuntu 22.04 + CUDA 12.8).
 #
 # Scope: this image contains ONLY the RoboDojo simulation-evaluation side
 # (Isaac Sim, IsaacLab, CuRobo, the RoboDojo Python stack) plus the lightweight
@@ -16,7 +16,7 @@
 #     -v "$PWD/Assets:/workspace/RoboDojo/Assets:ro" \
 #     -v "$PWD/eval_result:/workspace/RoboDojo/eval_result" \
 #     robodojo:cuda12.8 \
-#     bash scripts/evaluate.sh client --bench RoboDojo --task stack_bowls \
+#     bash scripts/evaluate.sh client --bench MobileArena --task place_bread_in_oven \
 #       --policy-name demo_policy --ckpt demo --action-type joint \
 #       --policy-host 127.0.0.1 --policy-port 9999 --eval-num 1
 

@@ -775,9 +775,8 @@ def build_eval_env_class(task_class):
                 self.eval_one_episode()
             success = 0
             process_scores = self.reward_manager.get_score() if hasattr(self, "get_score") else None
-            # Envs flagged unstable during the episode (e.g. make_kong's
-            # support-arm discard failed to knock the target tile down) are not
-            # valid eval samples: skip their videos and exclude them from the
+            # Envs flagged unstable during the episode are not valid eval
+            # samples: skip their videos and exclude them from the
             # eval total, accounting them under unstable_nums instead.
             unstable_in_batch = [e for e in exist_envs if e in self.unstable_envs]
             if unstable_in_batch:
@@ -950,7 +949,3 @@ def build_eval_env_class(task_class):
             return self.robot_manager.control_manager.get_empty(env_idx_list=env_idx_list)
 
     return EvalEnv
-
-
-def create_eval_env(config, app, resume_state=None, **kwargs):
-    return build_eval_env_class(resolve_task_class(config))(config, app, resume_state=resume_state, **kwargs)

@@ -1,64 +1,53 @@
 # Benchmark scripts
 
-RoboDojo and MobileArena use one CLI and shared evaluation scripts. Run commands
-from the repository root and select the benchmark with `--bench`:
+Run the MobileArena CLI from the repository root:
 
 ```bash
-bash scripts/evaluate.sh <command> --bench RoboDojo [options]
-bash scripts/evaluate.sh <command> --bench MobileArena [options]
+bash scripts/evaluate.sh <command> [options]
 ```
 
-RoboDojo is the default. `--dataset` remains an alias for `--bench`.
-`bash scripts/MobileArena/mobile_arena.sh <command>` remains a thin compatibility alias
-for MobileArena. For MobileArena assets, profiles, and scoring,
-see the [MobileArena guide](MobileArena/README.md).
+MobileArena is the only supported benchmark and the default. Explicit
+`--bench MobileArena` and its `--dataset` alias are accepted.
+`bash scripts/MobileArena/mobile_arena.sh <command>` is a thin entry point for
+the same CLI. See the [MobileArena guide](MobileArena/README.md) for tasks,
+policy contracts, assets, and scoring.
 
 ## Public entry points
 
 | Script | Purpose |
 | --- | --- |
-| [evaluate.sh](evaluate.sh) | Shared CLI: `doctor`, `eval`, `server`, `client`, `smoke`, `benchmark`, `dimensions`, `summarize`, `tasks` |
+| [evaluate.sh](evaluate.sh) | Shared CLI: `doctor`, `eval`, `server`, `client`, `smoke`, `benchmark`, `summarize`, `tasks` |
 | [install.sh](install.sh) | One-time environment setup (conda, Isaac Sim, submodules) |
-| [init_assets.sh](init_assets.sh) | Download assets for `--bench RoboDojo`, `MobileArena`, or `all` (default: `all`) |
+| [init_assets.sh](init_assets.sh) | Download MobileArena and shared assets (default: `MobileArena`) |
 | [MobileArena/download_data.sh](MobileArena/download_data.sh) | Download `ridiculouslzx/MobileArena` from ModelScope using a token, parallel files and large-file range threads; [usage](MobileArena/README.md#download-the-modelscope-dataset) |
 | [eval_policy.sh](eval_policy.sh) | Isaac Sim eval client (called by `evaluate.sh client` and XPolicyLab) |
 
-Benchmark metadata selects the task directory, default environment profile,
-result directories, and summary implementation. RoboDojo defaults to `arx_x5`;
-MobileArena uses the `mobile_arena` profile with `config_name: mobile_arena` for layouts and
-results. Both use the `RoboDojo` simulator Conda environment. An explicit
-`--env-cfg` must belong to the selected benchmark. The policy runs in its own
+The default profile is `mobile_arena`, with `config_name: mobile_arena` for layouts
+and results. The simulator uses the `RoboDojo` Conda environment. An explicit
+`--env-cfg` must declare the MobileArena benchmark. The policy runs in its own
 environment: `--policy-env` does not install dependencies or activate the
 simulator for standalone `client` commands.
 
-| Command | RoboDojo | MobileArena |
-| --- | --- | --- |
-| `tasks`, `doctor` | Task inventory and preflight checks | Task inventory and preflight checks |
-| `eval` | One task with a fresh local policy server | Same |
-| `server`, `client` | Split evaluation; omit `--task` for batch workers | Same |
-| `smoke`, `benchmark` | Task filters, GPU grouping, logs, resume | Same |
-| `summarize` | Original RoboDojo scoring | MobileArena's 24-task, three-seed scoring |
-| `dimensions` / `--dimension` | Five RoboDojo capability dimensions | Not applicable; use task filters |
+`tasks` lists the 24 runnable tasks; `doctor` performs preflight checks; `eval`
+runs one task with a fresh server. `server` and `client` support split deployment
+and batch workers when `--task` is omitted. `smoke` and `benchmark` support task
+filters, GPU groups, logs, and resume. `summarize` applies the three-seed scoring.
 
 ## Download assets
 
 Run the asset downloader after installing the simulator environment:
 
 ```bash
-bash scripts/init_assets.sh                  # both benchmarks (default: all)
-bash scripts/init_assets.sh --bench RoboDojo # RoboDojo only
-bash scripts/init_assets.sh --bench MobileArena  # MobileArena only
+bash scripts/init_assets.sh                     # MobileArena (default)
+bash scripts/init_assets.sh --bench MobileArena # explicit selection
 bash scripts/init_assets.sh --help
 ```
 
-Unlike `evaluate.sh`, the asset downloader defaults to **both** benchmarks.
-It selects the benchmark's object, layout, robot, and room packages, plus
-shared `Material/` and `Background/` assets. Shared `Sensor/` and `Traj/`
-packages are included when present in the source. Downloading another
-benchmark preserves previously installed assets and local files not supplied
-by the selected revision.
+The downloader selects MobileArena object, layout, M92UW robot, and room
+packages, plus shared `Material/`, `Background/`, `Sensor/`, and `Traj/` assets
+when present. Existing local assets and cache packages are retained.
 
-Both benchmarks use the same source, with these environment overrides:
+The shared asset source has these environment overrides:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -69,7 +58,7 @@ Both benchmarks use the same source, with these environment overrides:
 The source stores packages under `Assets/`. The selected revision must contain
 all packages required by the requested benchmark; the downloader fails with a
 missing-package error otherwise. In particular, use a revision containing
-MobileArena assets for `--bench MobileArena` or `--bench all`.
+MobileArena assets.
 
 Completion is checked against the source file list and sizes, and unresolved
 Git LFS pointers are rejected. Empty directories do not count as downloaded
@@ -79,14 +68,14 @@ native layout count and environment, then run a smoke test to verify simulation.
 ## Typical eval flow
 
 ```text
-evaluate.sh eval --bench <NAME>
+evaluate.sh eval
   -> scripts/internal/run_policy_eval.sh
     -> policy server (localhost) + sim client
 
 Split / multi-machine:
 
-evaluate.sh server --bench <NAME>  ->  scripts/internal/run_policy_server.sh  ->  policy server
-evaluate.sh client --bench <NAME>  ->  scripts/eval_policy.sh  ->  src/eval_client/main.py
+evaluate.sh server  ->  scripts/internal/run_policy_server.sh  ->  policy server
+evaluate.sh client  ->  scripts/eval_policy.sh  ->  src/eval_client/main.py
 ```
 
 Use `bash scripts/evaluate.sh server --help` and
@@ -97,10 +86,9 @@ port on both sides. `client` runs in the active simulator environment and does
 not load or change the server's checkpoint; its `--ckpt` / `--action-type`
 values label the results and must match the server.
 
-Inspect tasks or validate an installation for either benchmark:
+Inspect tasks or validate the installation:
 
 ```bash
-bash scripts/evaluate.sh tasks --bench RoboDojo --check
 bash scripts/evaluate.sh tasks --bench MobileArena --check
 bash scripts/evaluate.sh doctor --bench MobileArena \
   --task place_bread_in_oven --seed 0 --eval-num native --skip-policy
@@ -111,8 +99,7 @@ the requested evaluation. Asset checks follow task-specific robot/scene
 overrides and saved layout references: robot USD, URDF and required planner
 configs, object USD and metadata, room USD, and configured background/material
 files must exist, be nonempty, and contain downloaded data rather than Git LFS
-pointers. Unused assets from the other benchmark are not required. USD-internal
-dependencies and actual asset loading still need a smoke test.
+pointers. USD-internal dependencies and actual asset loading still need a smoke test.
 
 Checkpoint checks use XPolicyLab's runtime resolver. `--ckpt` accepts a short
 name, full training-run directory name, absolute path, or path relative to the
@@ -132,41 +119,20 @@ artifacts. The weight-free `demo_policy` does not require a checkpoint.
 `--skip-conda`, and `--skip-policy` flags intentionally omit those checks; they
 do not make an asset-free checkout ready to evaluate.
 
-Run one or more official RoboDojo capability dimensions in a benchmark sweep:
-
-```bash
-bash scripts/evaluate.sh dimensions --bench RoboDojo
-bash scripts/evaluate.sh benchmark --bench RoboDojo \
-  --dimension memory,long-horizon \
-  --policy-dir XPolicyLab/policy/<POLICY> \
-  --ckpt <CHECKPOINT> \
-  --policy-env <ENV> \
-  --eval-num native
-```
-
-Available RoboDojo dimensions are `generalization`, `memory`, `precision`,
-`long-horizon`, and `open`. Generalization includes both the 12 standard tasks
-and their 12 runnable `_random` layout variants. Combine `--dimension` with
-`--only` or `--tasks-file` to narrow a dimension further. MobileArena has 24 tasks
-(eight base tasks and their `_l`/`_s` variants) and no capability dimensions;
-select its tasks with `--only`, `--tasks-file`, or `--limit`.
+Select from the 24 tasks (eight base tasks and their `_l`/`_s` variants) using
+`--only`, `--tasks-file`, or `--limit`.
 
 ## Batch execution and multi-GPU grouping
 
-`evaluate.sh smoke` and `evaluate.sh benchmark` use the same scheduler for both
-benchmarks. Execution is sequential by default. `smoke` defaults to one episode
+`evaluate.sh smoke` and `evaluate.sh benchmark` use the same scheduler.
+Execution is sequential by default. `smoke` defaults to one episode
 per task; `benchmark --eval-num native` uses each task's configured episode
 count. Pass `--gpu-ids` to run task groups in parallel, with tasks inside each
 group running sequentially. Separate `--policy-gpu-ids` and `--env-gpu-ids` lists
 can assign policy servers and simulator clients to different devices.
 
-Grouping depends on the selected benchmark and environment profile:
-
-- **RoboDojo / `arx_x5`:** retains the original measured runtime weights and
-  grouping behavior. The weights are stored in `internal/benchmark_groups.py`.
-- **MobileArena:** has no measured runtime weights. Tasks are assigned round robin
-  by task count; equal task counts do not guarantee equal execution time.
-- Profiles without runtime weights also use round-robin task assignment.
+Tasks are assigned round robin by count. Equal task counts do not guarantee
+equal execution time.
 
 The examples use the included [demo policy](../XPolicyLab/policy/demo_policy/README.md),
 which holds the observed pose and requires no model checkpoint. Prepare its
@@ -186,19 +152,6 @@ Real policies need their own installation and compatible weights. Choose
 `--action-type` explicitly: the CLI defaults to `ee`, while several included
 MobileArena adapters require `joint`. See the
 [compatibility list](MobileArena/README.md#policy-and-action-compatibility).
-
-Preview a RoboDojo sweep:
-
-```bash
-bash scripts/evaluate.sh benchmark --bench RoboDojo \
-  --policy-dir XPolicyLab/policy/demo_policy \
-  --ckpt demo \
-  --policy-env demo-policy \
-  --action-type joint \
-  --eval-num 1 \
-  --gpu-ids 0,2,5,7 \
-  --dry-run
-```
 
 Preview all 24 MobileArena tasks split across four GPUs:
 
@@ -244,8 +197,7 @@ support, not a guarantee that a given GPU/checkpoint can run every batch size.
 
 ### Logs and resume
 
-Batch logs and status files default to `smoke_results/` for RoboDojo and
-`smoke_results/MobileArena/` for MobileArena.
+Batch logs and status files default to `smoke_results/MobileArena/`.
 Set `--run-id NAME` for a repeatable sweep identity, then rerun with `--resume`
 to skip completed tasks. Keep the same execution mode (`eval` or `client`),
 benchmark, profile, policy, checkpoint, action type, seed, and episode count.
@@ -262,17 +214,11 @@ not necessarily reset the model's RNG.
 ## Result summaries
 
 ```bash
-bash scripts/evaluate.sh summarize --bench RoboDojo
 bash scripts/evaluate.sh summarize --bench MobileArena
 ```
 
-The shared command selects the summary script in the matching benchmark folder.
-RoboDojo and MobileArena keep their own scoring and completeness rules:
-
-| Benchmark | Summary script | Default output |
-| --- | --- | --- |
-| RoboDojo | [RoboDojo/summarize_result.py](RoboDojo/summarize_result.py) | `eval_result/RoboDojo/_summary.md` |
-| MobileArena | [MobileArena/summarize_result.py](MobileArena/summarize_result.py) | `eval_result/MobileArena/_summary.md` |
+The command runs [MobileArena/summarize_result.py](MobileArena/summarize_result.py)
+and writes `eval_result/MobileArena/_summary.md` by default.
 
 When an adapter accepts a checkpoint path, pass the original path to `--ckpt`.
 Result directory labels containing path separators are percent-encoded with a
@@ -285,12 +231,6 @@ or path. This keeps result labels reversible without adding metadata to `_result
 See the
 [MobileArena guide](MobileArena/README.md#result-summaries) for its three-seed aggregation
 and result filters.
-
-RoboDojo selects the most recently modified `_result.json` for each
-task/policy/result configuration/seed. Ties use the run-directory name, then
-the outer run label. This supports custom `--run-id` values. Insufficient
-episodes or invalid JSON in the latest result leave the cell incomplete;
-the summary does not fall back to an older result.
 
 For MobileArena, `--env-cfg` on `summarize` filters the saved `config_name`;
 launch commands use it to select the profile stem. Both values are `mobile_arena`
@@ -311,15 +251,15 @@ deviations across seeds, in both the overview and detailed task tables.
 With Python 3.11+, PyYAML, NumPy, and Bash 4+:
 
 ```bash
-python -m unittest discover -s tests -p 'test_*.py'
+python scripts/internal/task_inventory.py --format json --check
+bash scripts/evaluate.sh doctor --skip-isaac --skip-conda --skip-policy
 bash -n scripts/evaluate.sh scripts/eval_policy.sh
 ```
 
-Tests and `--dry-run` validate command routing and selected data contracts.
-They do not validate loaded assets, rendering, physics, Pink IK, or learned
-checkpoint inference. The current review did not run GPU simulation or real
-models. Run `doctor` and an actual `smoke` on the target machine before a full
-benchmark; keep smoke completion separate from model success metrics.
+Inventory checks and `--dry-run` validate configuration and command routing.
+They do not validate rendering, physics, Pink IK, or learned checkpoint inference.
+Run `doctor` and an actual `smoke` on the target machine before a full benchmark;
+keep smoke completion separate from policy success metrics.
 
 ## Internal (`internal/`)
 
@@ -328,16 +268,12 @@ These scripts are called by `evaluate.sh` or policy utilities.
 | File | Purpose |
 | --- | --- |
 | [benchmark_profile.py](internal/benchmark_profile.py) | Benchmark metadata, environment defaults, and result configuration |
-| [task_inventory.py](internal/task_inventory.py) | Shared task discovery; RoboDojo capability dimensions |
+| [task_inventory.py](internal/task_inventory.py) | MobileArena task discovery and config/class consistency |
 | [verify_install.sh](internal/verify_install.sh) | `evaluate.sh doctor` for the selected benchmark |
 | [check_assets.py](internal/check_assets.py) | Static checks of selected robot, scene, object, and layout asset files |
 | [check_policy_checkpoint.py](internal/check_policy_checkpoint.py) | Checkpoint path preflight using XPolicyLab's runtime resolver |
 | [smoke_all_tasks.sh](internal/smoke_all_tasks.sh) | Shared `smoke` / `benchmark` runner |
-| [benchmark_groups.py](internal/benchmark_groups.py) | Shared task grouping and RoboDojo runtime weights |
-| [stat_score_distribution.py](internal/stat_score_distribution.py) | Offline score histogram analysis (manual) |
-
-New benchmarks should register their metadata and supply their own tasks and
-scoring rules, reusing this discovery, validation, launch, and batch path.
+| [benchmark_groups.py](internal/benchmark_groups.py) | Round-robin task assignment across GPU workers |
 
 ## Docker
 

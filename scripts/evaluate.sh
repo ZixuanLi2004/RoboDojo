@@ -6,12 +6,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/evaluate.sh <command> --bench NAME [options]
-       bash scripts/evaluate.sh --bench NAME <command> [options]
+Usage: bash scripts/evaluate.sh <command> [--bench MobileArena] [options]
+       bash scripts/evaluate.sh --bench MobileArena <command> [options]
 
-Benchmarks: RoboDojo (default), MobileArena. --dataset is an alias for --bench.
-Defaults: RoboDojo uses env profile arx_x5; MobileArena uses mobile_arena.
-The simulator environment defaults to RoboDojo for both benchmarks.
+Benchmark: MobileArena (default). --dataset is an alias for --bench.
+Default environment profile: mobile_arena.
+The simulator Conda environment is RoboDojo.
 
 Commands:
   doctor      Check benchmark assets/configs/environment
@@ -21,7 +21,6 @@ Commands:
   smoke       Evaluate selected/all tasks (default: one episode each)
   benchmark   Evaluate selected/all tasks with --eval-num NUM|native
   tasks       Inspect canonical runnable tasks
-  dimensions  List capability dimensions, when defined by the benchmark
   summarize   Aggregate results using the benchmark's existing scoring rules
 
 Batch commands share task filtering and multi-GPU scheduling. Run a command
@@ -81,10 +80,6 @@ run_tasks() {
   python3 "${ROOT_DIR}/scripts/internal/task_inventory.py" --bench "${BENCH_NAME}" "$@"
 }
 
-run_dimensions() {
-  python3 "${ROOT_DIR}/scripts/internal/task_inventory.py" --bench "${BENCH_NAME}" --list-dimensions "$@"
-}
-
 run_eval() {
   local dataset="${BENCH_NAME}"
   local task=""
@@ -127,9 +122,9 @@ Required:
   --policy-env ENV      Policy conda env, uv, or env path
 
 Common options:
-  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
+  --bench NAME          MobileArena (default); --dataset is an alias
   --eval-num NUM|native  Override EVAL_NUM for this eval; use `native` for per-task counts from _task.yml
-  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
+  --env-cfg NAME        env_cfg stem (default: mobile_arena)
   --expert-num NUM      Legacy policy argument (default: 100)
   --action-type NAME    Policy action type (default: ee)
   --seed NUM            Eval seed / layout seed (default: 0)
@@ -248,11 +243,11 @@ Required:
   --policy-env ENV      Policy conda env, uv, or env path
 
 Common options:
-  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
+  --bench NAME          MobileArena (default); --dataset is an alias
   --task TASK           Task passed to the policy server (omit for batch mode)
   --policy-port PORT    TCP port (auto-selected in single-task mode; required in batch)
   --bind-host HOST      Bind address (default: 0.0.0.0 for remote clients; use localhost for local-only)
-  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
+  --env-cfg NAME        env_cfg stem (default: mobile_arena)
   --action-type NAME    Policy action type (default: ee)
   --seed NUM            Eval seed (default: 0)
   --policy-gpu ID       Policy server GPU (default: 0)
@@ -260,7 +255,7 @@ Common options:
   --policy-gpu-ids IDS   Worker policy GPUs; one id in single-task mode
   --dry-run             Print command without running it
 
-Batch mode: omit --task and use --only, --tasks-file, --dimension, --limit,
+Batch mode: omit --task and use --only, --tasks-file, --limit,
 --gpu-ids, and --policy-port PORTS. See `evaluate.sh benchmark --help` for all options.
 EOF
         return 0
@@ -367,7 +362,7 @@ server. Pair with `evaluate.sh server` on the policy machine with the same --ben
 
 Batch mode:
   Omit `--task` and pass task filters such as `--only`, `--tasks-file`, or
-  `--dimension`, together with `--gpu-ids` or `--env-gpu-ids`. Tasks will be
+  `--limit`, together with `--gpu-ids` or `--env-gpu-ids`. Tasks will be
   grouped using the benchmark scheduler and launched across client workers.
   If `--policy-host` contains multiple hosts, its count and `--policy-port`
   count must both equal the group count. If `--policy-host` contains one host,
@@ -380,11 +375,11 @@ Required:
   --policy-port PORT     Policy server TCP port
 
 Common options:
-  --bench NAME          RoboDojo (default) or MobileArena; --dataset is an alias
+  --bench NAME          MobileArena (default); --dataset is an alias
   --task TASK           Selected benchmark task name (omit for batch mode)
   --policy-host HOST    Policy server host (default: 127.0.0.1)
   --eval-num NUM|native  Override EVAL_NUM for this run; `native` uses per-task counts
-  --env-cfg NAME         env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
+  --env-cfg NAME         env_cfg stem (default: mobile_arena)
   --seed NUM             Eval seed / layout seed (default: 0)
   --env-gpu ID           Isaac Sim GPU (default: 0)
   --gpu-ids IDS          Worker GPU ids in batch mode; one id in single-task mode
@@ -394,7 +389,6 @@ Common options:
   --connect-timeout SEC  Pre-flight policy-server reachability probe timeout (default: 5)
   --only a,b,c           Batch mode task subset
   --tasks-file PATH      Batch mode task subset file
-  --dimension NAMES      Batch mode capability dimensions
   --limit NUM            Batch mode task limit after filtering
   --dry-run              Print the resolved eval_policy.sh command without running it
 EOF
@@ -567,24 +561,10 @@ run_single_or_batch() {
 run_summarize() {
   local summary_script
   summary_script="$(python3 "${ROOT_DIR}/scripts/internal/benchmark_profile.py" --bench "${BENCH_NAME}" --field summary_script)"
-  if [[ "${BENCH_NAME}" == RoboDojo && $# -gt 0 ]]; then
-    if [[ $# -eq 1 && ( "$1" == -h || "$1" == --help ) ]]; then
-      cat <<'EOF'
-Usage: bash scripts/evaluate.sh summarize --bench RoboDojo
-
-Uses the original RoboDojo aggregation rules and writes <result root>/_summary.md.
-Set ROBODOJO_EVAL_ROOT to override the default eval_result/RoboDojo result root.
-MobileArena has additional filters; see `evaluate.sh summarize --bench MobileArena --help`.
-EOF
-      return 0
-    fi
-    echo "[bench summarize] RoboDojo accepts no summary options; use ROBODOJO_EVAL_ROOT to select the result root" >&2
-    exit 2
-  fi
   python3 "${ROOT_DIR}/${summary_script}" "$@"
 }
 
-BENCH_NAME="RoboDojo"
+BENCH_NAME="MobileArena"
 BENCH_ENV_CFG=""
 command=""
 command_args=()
@@ -607,7 +587,6 @@ set -- ${command_args[@]+"${command_args[@]}"}
 case "${command}" in
   doctor) run_doctor "$@" ;;
   tasks) run_tasks "$@" ;;
-  dimensions) run_dimensions "$@" ;;
   eval|server|client) run_single_or_batch "$@" ;;
   smoke) run_sweep smoke "$@" ;;
   benchmark) run_sweep benchmark "$@" ;;

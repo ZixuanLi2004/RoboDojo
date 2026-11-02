@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 policy_dir=""
-dataset="RoboDojo"
+dataset="MobileArena"
 env_cfg=""
 task_name=""
 seed="0"
@@ -24,10 +24,10 @@ usage() {
 Usage: bash scripts/internal/verify_install.sh [options]
 
 Options:
-  --bench NAME          RoboDojo or MobileArena (default: RoboDojo; --dataset is an alias)
+  --bench NAME          MobileArena (default; --dataset is an alias)
   --policy-dir PATH     Optional XPolicyLab policy directory to validate
-  --env-cfg NAME        env_cfg stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
-  --task NAME           Task (default: stack_bowls / place_bread_in_oven)
+  --env-cfg NAME        env_cfg stem (default: mobile_arena)
+  --task NAME           Task (default: place_bread_in_oven)
   --seed NUM            Layout seed to check (default: 0)
   --eval-num NUM|native Required layout count, capped at the task default (default: native)
   --ckpt NAME|PATH      Checkpoint short name, full run name, or path (uses the runtime resolver)
@@ -224,8 +224,8 @@ env_cfg = sys.argv[2]
 dataset = sys.argv[3]
 cfg_path = root / "env_cfg" / f"{env_cfg}.yml"
 cfg = yaml.safe_load(cfg_path.read_text()) or {}
-if cfg.get("benchmark", "RoboDojo") != dataset:
-    raise SystemExit(f"env_cfg {env_cfg!r} uses benchmark {cfg.get('benchmark', 'RoboDojo')!r}, not {dataset!r}")
+if cfg.get("benchmark", "MobileArena") != dataset:
+    raise SystemExit(f"env_cfg {env_cfg!r} uses benchmark {cfg.get('benchmark', 'MobileArena')!r}, not {dataset!r}")
 refs = cfg.get("config", {})
 required = [
     root / "env_cfg" / "sim" / f"{refs.get('sim')}.yml",
@@ -304,10 +304,7 @@ fi
 if [[ "${skip_isaac}" == "true" ]]; then
   record "WARN" "Isaac imports" "skipped by --skip-isaac"
 elif command -v conda >/dev/null 2>&1; then
-  runtime_imports="import pinocchio; import isaacsim; import isaaclab"
-  if [[ "${dataset}" == MobileArena ]]; then
-    runtime_imports+="; import pink; import daqp"
-  fi
+  runtime_imports="import pinocchio; import isaacsim; import isaaclab; import pink; import daqp"
   if conda run --no-capture-output -n "${sim_env}" python -c "${runtime_imports}"; then
     record "PASS" "Isaac imports" "simulator and required IK modules import in ${sim_env}"
   else

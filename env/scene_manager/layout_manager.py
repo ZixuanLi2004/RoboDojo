@@ -620,7 +620,7 @@ class LayoutManager:
     def check_layout_stability(self, env, render=False, maxstep=300, window=100, limits=None, window_limits=None):
         """Check settling, optionally using authored poses and explicit evaluation limits.
 
-        Calls without limits retain RoboDojo's first-step baseline and axis-wise
+        Calls without limits retain the first-step baseline and axis-wise
         distance checks. Explicit limits use saved support planes and XY distance.
         """
         if maxstep <= 1 or not 0 < window < maxstep:

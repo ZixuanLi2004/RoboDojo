@@ -7,15 +7,13 @@ bash scripts/evaluate.sh <command> --bench MobileArena [options]
 ```
 
 Commands are `tasks`, `doctor`, `eval`, `server`, `client`, `smoke`, `benchmark`,
-and `summarize`. Selecting MobileArena sets the default environment profile to
+and `summarize`. MobileArena is the only supported benchmark and the default,
+so `--bench MobileArena` is optional. The default environment profile is
 `mobile_arena`; the simulator still uses the shared `RoboDojo` Conda environment.
 `--dataset MobileArena` is a compatibility alias for `--bench MobileArena`.
 
-Task discovery, validation, single-task launch, and batch scheduling use the
-same implementation as RoboDojo. The benchmark metadata selects MobileArena's task
-inventory, default profile, result directories, and summary implementation.
-Task definitions and scoring rules remain specific to each benchmark. See the
-[shared CLI guide](../README.md) for the common workflow.
+Task discovery, validation, single-task launch, and batch scheduling use
+`scripts/evaluate.sh`. See the [CLI guide](../README.md) for the workflow.
 
 Existing `bash scripts/MobileArena/mobile_arena.sh <command>` calls remain supported as a
 thin alias for `evaluate.sh <command> --bench MobileArena`.
@@ -23,7 +21,7 @@ thin alias for `evaluate.sh <command> --bench MobileArena`.
 ## Installation and assets
 
 Use the [root installation steps](../../README.md#mobilearena-quick-start) on a
-Linux NVIDIA GPU machine. Both benchmarks run in the `RoboDojo` simulator
+Linux NVIDIA GPU machine. MobileArena runs in the `RoboDojo` simulator
 environment, including the shared Pinocchio/Pink dependencies. The policy has
 a separate environment installed according to its adapter README.
 
@@ -31,10 +29,10 @@ Download MobileArena packages and recorded layouts from the repository root:
 
 ```bash
 bash scripts/init_assets.sh --bench MobileArena
-# Omit --bench (or use --bench all) to download both benchmarks.
+# Omitting --bench also selects MobileArena.
 ```
 
-Both benchmarks use the same Hugging Face asset source. `HF_REPO_ID`,
+The downloader uses the shared Hugging Face asset source. `HF_REPO_ID`,
 `HF_REPO_URL`, and `HF_REVISION` select the repository and revision; see the
 [asset options](../README.md#download-assets). The selected revision must
 contain the complete MobileArena packages below. If any required package is
@@ -294,7 +292,6 @@ MobileArena has 24 tasks and no capability dimensions. Execution is sequential
 by default. To assign tasks across GPUs, add `--gpu-ids 0,1,2,3`. MobileArena has
 no measured runtime weights yet, so the shared scheduler assigns tasks round
 robin by task count. This does not guarantee equal runtimes across workers.
-RoboDojo's existing `arx_x5` runtime weights are not applied to MobileArena.
 
 GPU grouping assigns different tasks to separate simulator processes. To change
 the number of simultaneous environments within each process, set

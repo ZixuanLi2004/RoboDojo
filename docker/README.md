@@ -1,12 +1,11 @@
-# Run RoboDojo and MobileArena in Docker
+# Run MobileArena in Docker
 
-This image is the **RoboDojo simulation-evaluation side** — Isaac Sim 5.1,
+This image is the **MobileArena simulator client** — Isaac Sim 5.1,
 IsaacLab, CuRobo, the RoboDojo Python stack, and the lightweight XPolicyLab client
 used by `src/eval_client`. It includes policy client adapters but **no model environments or checkpoints**: your **policy server runs outside the container** and the sim
 client talks to it over the default WebSocket transport (`protocol: ws` in
-`deploy.yml`). The same image supports both benchmarks through
-`scripts/evaluate.sh --bench RoboDojo|MobileArena`; the policy must support the
-selected robot's observations and actions.
+`deploy.yml`). Use `scripts/evaluate.sh <command>` (MobileArena is the default); the policy
+must support M92UW observations and actions.
 
 - Base image: `nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04` (Ubuntu 22.04 + CUDA 12.8)
 - Conda env inside the image: `RoboDojo` (Python 3.11)
@@ -53,11 +52,10 @@ Everything below explains each step and how to plug in your own policy.
 Download assets on the host before running the container:
 
 ```bash
-bash scripts/init_assets.sh --bench RoboDojo
-# Or: --bench MobileArena for MobileArena; omit --bench to download both.
+bash scripts/init_assets.sh
 ```
 
-Both benchmarks use the same Hugging Face asset source. The selected
+The downloader uses the shared Hugging Face asset source. The selected
 `HF_REVISION` must include the requested benchmark's packages; missing packages
 cause an error. `HF_REPO_ID` and `HF_REPO_URL` can override the source.
 MobileArena needs `Assets/Object/MobileArena/`, `Assets/Room/MobileArena/`,
@@ -122,11 +120,10 @@ runs: GPU-in-container → image build → start the bundled `demo_policy` serve
 a container evaluation → assert the result file. A final table reports each
 phase, and results land under `eval_result/`.
 
-The default benchmark is RoboDojo (`stack_bowls`, profile `arx_x5`). To run the
-same check for MobileArena after preparing its assets:
+After preparing MobileArena assets, run the check with:
 
 ```bash
-ROBODOJO_SMOKE_BENCH=MobileArena ROBODOJO_CONDA_ENV=demo-policy \
+ROBODOJO_CONDA_ENV=demo-policy \
   bash docker/smoke_docker.sh run
 ```
 
@@ -204,8 +201,7 @@ Required client flags: `--task`, `--policy-name` (a directory under
 `--eval-num N` (or `native`), `--action-type` (default `ee`), `--env-gpu` (default
 `0`). Add `--dry-run` to print the resolved command without launching anything.
 Keep `--bench`, `--env-cfg`, task, seed, and action type consistent with the
-server. For RoboDojo, select `--bench RoboDojo` and a compatible task/profile
-(the default profile is `arx_x5`).
+server. The default benchmark/profile is MobileArena/mobile_arena.
 
 **Mounts explained** (the last three are strongly recommended — they prevent slow
 first starts):
@@ -263,7 +259,7 @@ caches (step 5) so both are reused. `smoke_docker.sh` does this automatically.
 | --- | --- |
 | `ROBODOJO_SKIP_BUILD=1` | Reuse the existing image (skip the ~1 h build) — fast iteration. |
 | `ROBODOJO_CN_MIRRORS=1/0` | Force China build mirrors on/off (default `auto`). |
-| `ROBODOJO_SMOKE_BENCH=RoboDojo\|MobileArena` | Select the benchmark and its default task/environment profile (default `RoboDojo`). |
+| `ROBODOJO_SMOKE_BENCH=MobileArena` | Optional explicit benchmark selection (default `MobileArena`). |
 | `ROBODOJO_SMOKE_ENV_CFG` | Override the environment profile; it must belong to the selected benchmark. |
 | `ROBODOJO_SMOKE_TASK`, `ROBODOJO_SMOKE_PORT`, `ROBODOJO_SMOKE_POLICY`, … | Override task/port/policy/etc. (see the script header). |
 
@@ -299,8 +295,6 @@ docker run --rm --gpus all --network host --ipc host \
   robodojo:cuda12.8 \
   bash scripts/evaluate.sh doctor --bench MobileArena --skip-policy
 ```
-
-Use `--bench RoboDojo` to check the original benchmark instead.
 
 ## Appendix B: China networks
 

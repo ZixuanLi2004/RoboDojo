@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT_DIR}/scripts/internal/process_utils.sh"
 
-dataset="RoboDojo"
+dataset="MobileArena"
 execution_mode="eval"
 ckpt=""
 env_cfg=""
@@ -33,7 +33,6 @@ markdown_path=""
 log_dir=""
 only_tasks=""
 tasks_file=""
-dimensions=""
 resume="false"
 fail_fast="false"
 dry_run="false"
@@ -44,14 +43,12 @@ usage() {
 Usage: bash scripts/internal/smoke_all_tasks.sh [options]
 
 Runs selected benchmark tasks through scripts/evaluate.sh eval, client, or server. Default is
-sequential; pass `--gpu-ids` or `--policy-gpu-ids/--env-gpu-ids` for multi-GPU execution. RoboDojo/arx_x5 uses measured runtime weights;
-other profiles use task-count balancing.
+sequential; pass `--gpu-ids` or `--policy-gpu-ids/--env-gpu-ids` for multi-GPU execution. Tasks are balanced by count.
 
 Options:
   --mode NAME         Internal runner mode: eval, client, or server (default: eval).
   --only a,b,c        Comma-separated task subset.
   --tasks-file PATH   Newline-separated task subset. Comments and blank lines are ignored.
-  --dimension NAMES  RoboDojo capability dimensions; MobileArena accepts only all.
   --gpu-ids IDS       Balanced multi-GPU sweep. Comma-separated ids, reused for policy+env.
   --policy-gpu-ids IDS  Optional per-worker policy GPU ids. Defaults to --gpu-ids.
   --env-gpu-ids IDS     Optional per-worker env GPU ids. Defaults to --gpu-ids.
@@ -60,13 +57,13 @@ Options:
   --dry-run           Print eval commands and mark tasks DRY_RUN without launching eval.
   --all               Explicitly run all runnable tasks (default when --only is omitted).
   --limit NUM         Run only the first NUM tasks after filtering.
-  --summary PATH      JSON summary (RoboDojo: smoke_results/; MobileArena: smoke_results/MobileArena/)
+  --summary PATH      JSON summary (default directory: smoke_results/MobileArena/)
   --markdown PATH     Markdown summary (same default directory as --summary)
   --run-id ID         Stable run id used in result paths and summaries.
   --eval-num NUM      Episode count for each task (default: 1). Use `native` to use per-task counts from _task.yml.
-  --bench NAME        Benchmark: RoboDojo (default) or MobileArena; --dataset is an alias.
+  --bench NAME        Benchmark: MobileArena (default); --dataset is an alias.
   --ckpt NAME         Policy checkpoint name (required)
-  --env-cfg NAME      Profile stem (default: arx_x5 for RoboDojo, mobile_arena for MobileArena)
+  --env-cfg NAME      Profile stem (default: mobile_arena)
   --expert-num NUM    Expert data count argument (default: 100)
   --action-type NAME  Policy action type (default: ee)
   --seed NUM          Eval seed / layout seed (default: 0)
@@ -84,7 +81,7 @@ Options:
 
 Examples:
   bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --only place_kettle_on_tv_stand
-  bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --dimension all
+  bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --all
   bash scripts/internal/smoke_all_tasks.sh --bench MobileArena --policy-dir XPolicyLab/policy/demo_policy --ckpt ckpt --policy-env env --eval-num native --gpu-ids 0,1,2,3
 EOF
 }
@@ -110,11 +107,6 @@ while [[ $# -gt 0 ]]; do
     --mode) need_value "$@"; execution_mode="$2"; shift 2 ;;
     --only) need_value "$@"; only_tasks="$2"; shift 2 ;;
     --tasks-file) need_value "$@"; tasks_file="$2"; shift 2 ;;
-    --dimension)
-      need_value "$@"
-      dimensions="${dimensions:+${dimensions},}$2"
-      shift 2
-      ;;
     --resume) resume="true"; shift ;;
     --all) shift ;;
     --fail-fast) fail_fast="true"; shift ;;
@@ -165,12 +157,6 @@ if [[ -n "${limit}" && ! "${limit}" =~ ^[1-9][0-9]*$ ]]; then
   echo "[bench batch] --limit must be a positive integer" >&2
   exit 2
 fi
-
-dimension_args=(--dataset "${dataset}" --resolve-dimensions)
-if [[ -n "${dimensions}" ]]; then
-  dimension_args+=(--dimension "${dimensions}")
-fi
-dimensions="$(python3 "${ROOT_DIR}/scripts/internal/task_inventory.py" "${dimension_args[@]}")"
 
 if [[ "${execution_mode}" != "eval" && "${execution_mode}" != "client" && "${execution_mode}" != "server" ]]; then
   echo "[bench batch] --mode must be eval, client, or server" >&2
@@ -233,8 +219,7 @@ print(encode_result_info(f"ckpt_name={sys.argv[2]},action_type={sys.argv[3]}"))
 PY
 )"
 
-summary_root="${ROOT_DIR}/smoke_results"
-[[ "${dataset}" == RoboDojo ]] || summary_root+="/${dataset}"
+summary_root="${ROOT_DIR}/smoke_results/${dataset}"
 summary_path="${summary_path:-${summary_root}/${run_id}.json}"
 
 RESULTS_TSV="$(mktemp)"
@@ -276,7 +261,7 @@ trap 'exit 143' TERM
 
 if [[ "${resume}" == "true" && -f "${summary_path}" ]]; then
   run_id="$(python3 - "${summary_path}" "${RESULTS_TSV}" "${dataset}" "${env_cfg}" "${result_config}" \
-    "${policy_name}" "${ckpt}" "${action_type}" "${seed}" "${eval_num}" "${run_id}" "${run_id_explicit}" "${ROOT_DIR}" "${execution_mode}" <<'PY'
+    "${policy_name}" "${ckpt}" "${action_type}" "${seed}" "${eval_num}" "${run_id}" "${run_id_explicit}" "${execution_mode}" <<'PY'
 import csv
 import json
 from pathlib import Path
@@ -284,30 +269,11 @@ import sys
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 saved_mode = payload.get("execution_mode", "eval")
-if saved_mode != sys.argv[14]:
-    raise SystemExit(f"Cannot resume: summary execution_mode={saved_mode!r}, requested {sys.argv[14]!r}.")
+if saved_mode != sys.argv[13]:
+    raise SystemExit(f"Cannot resume: summary execution_mode={saved_mode!r}, requested {sys.argv[13]!r}.")
 keys = ("benchmark", "env_cfg", "config_name", "policy", "ckpt", "action_type", "seed", "eval_num")
 expected = dict(zip(keys, sys.argv[3:11]))
 missing = [key for key in keys if key not in payload]
-if missing and expected["benchmark"] == "RoboDojo" and not any(key in payload for key in keys[:-1]):
-    # Older RoboDojo summaries stored experiment identity only in result paths.
-    # Validate those paths before allowing a legacy sweep to resume.
-    result_root = Path(sys.argv[13]) / "eval_result" / "RoboDojo"
-    sys.path.insert(0, sys.argv[13])
-    from env.benchmark import encode_result_info
-    info = f"ckpt_name={expected['ckpt']},action_type={expected['action_type']}"
-    experiments = {f"{expected['seed']}_{info}", f"{expected['seed']}_{encode_result_info(info)}"}
-    for row in payload.get("results", []):
-        result = Path(row.get("result_path", ""))
-        task = row.get("task", "")
-        expected_parents = {
-            result_root / task / expected["policy"] / expected["config_name"] / experiment
-            for experiment in experiments
-        }
-        if not task or result.name != "_result.json" or result.parent.parent not in expected_parents:
-            raise SystemExit("Cannot resume: legacy summary result paths do not match the requested experiment.")
-    payload.update({key: expected[key] for key in missing if key != "eval_num"})
-    missing = [key for key in keys if key not in payload]
 if missing:
     raise SystemExit(f"Cannot resume: summary is missing {', '.join(missing)}.")
 for key, value in expected.items():
@@ -334,7 +300,7 @@ log_dir="${summary_root}/${run_id}/logs"
 mkdir -p "$(dirname "${summary_path}")" "$(dirname "${markdown_path}")" "${log_dir}"
 
 load_tasks() {
-  python3 - "${ROOT_DIR}" "${only_tasks}" "${tasks_file}" "${limit}" "${dimensions}" "${dataset}" <<'PY'
+  python3 - "${ROOT_DIR}" "${only_tasks}" "${tasks_file}" "${limit}" "${dataset}" <<'PY'
 from pathlib import Path
 import sys
 
@@ -342,8 +308,7 @@ root = Path(sys.argv[1])
 only = sys.argv[2]
 tasks_file = sys.argv[3]
 limit = sys.argv[4]
-dimensions = sys.argv[5]
-dataset = sys.argv[6]
+dataset = sys.argv[5]
 sys.path.insert(0, str(root))
 
 import subprocess
@@ -353,8 +318,6 @@ inventory_cmd = [
     "--only-runnable",
     "--dataset", dataset,
 ]
-if dimensions:
-    inventory_cmd.extend(["--dimension", dimensions])
 task_names = subprocess.check_output(inventory_cmd, text=True).splitlines()
 
 selected = None
@@ -406,15 +369,15 @@ PY
 
 write_summaries() {
   RESULTS_SAVED="false"
-  python3 - "${RESULTS_TSV}" "${summary_path}" "${markdown_path}" "${run_id}" "${eval_num}" "${dimensions}" \
+  python3 - "${RESULTS_TSV}" "${summary_path}" "${markdown_path}" "${run_id}" "${eval_num}" \
     "${dataset}" "${env_cfg}" "${result_config}" "${policy_name}" "${ckpt}" "${action_type}" "${seed}" "${execution_mode}" <<'PY' || return 1
 import csv
 import json
 from pathlib import Path
 import sys
 
-tsv_path, json_path, md_path, run_id, eval_num, dimensions = sys.argv[1:7]
-dataset, env_cfg, config_name, policy, ckpt, action_type, seed, execution_mode = sys.argv[7:]
+tsv_path, json_path, md_path, run_id, eval_num = sys.argv[1:6]
+dataset, env_cfg, config_name, policy, ckpt, action_type, seed, execution_mode = sys.argv[6:]
 raw_rows = []
 if Path(tsv_path).exists():
     with open(tsv_path, encoding="utf-8", newline="") as f:
@@ -447,7 +410,6 @@ payload = {
     "action_type": action_type,
     "seed": seed,
     "eval_num": eval_num_value,
-    "dimensions": [item for item in dimensions.split(",") if item],
     "counts": counts,
     "results": rows,
 }
@@ -459,7 +421,6 @@ lines = [
     f"- mode: `{execution_mode}`; profile: `{env_cfg}`; result config: `{config_name}`",
     f"- policy: `{policy}`; checkpoint: `{ckpt}`; action: `{action_type}`; seed: `{seed}`",
     f"- eval_num: `{eval_num}`",
-    f"- dimensions: `{dimensions or 'all'}`",
     f"- pass: `{counts['PASS']}`",
     f"- fail: `{counts['FAIL']}`",
     f"- skip: `{counts['SKIP']}`",
@@ -685,7 +646,7 @@ for task in "${TASKS[@]}"; do
   ACTIVE_TASKS+=("${task}")
 done
 
-echo "[bench batch] dataset=${dataset} tasks=${#TASKS[@]} active=${#ACTIVE_TASKS[@]} dimensions=${dimensions:-all} eval_num=${eval_num} run_id=${run_id}"
+echo "[bench batch] dataset=${dataset} tasks=${#TASKS[@]} active=${#ACTIVE_TASKS[@]} eval_num=${eval_num} run_id=${run_id}"
 echo "[bench batch] summary=${summary_path}"
 echo "[bench batch] markdown=${markdown_path}"
 

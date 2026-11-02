@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end Docker procedure runner + live monitor for RoboDojo and MobileArena.
+# End-to-end Docker procedure runner + live monitor for MobileArena.
 #
 # It drives (and asserts) the whole containerized eval loop so you can see the
 # whole procedure is working:
@@ -15,10 +15,10 @@
 #   bash docker/smoke_docker.sh clean      # stop leftover server, prune smoke logs
 #
 # Everything is overridable via env (task/profile default to the selected bench):
-#   ROBODOJO_SMOKE_BENCH=RoboDojo     # or MobileArena
-#   ROBODOJO_IMAGE=robodojo:cuda12.8  ROBODOJO_SMOKE_TASK=stack_bowls
+#   ROBODOJO_SMOKE_BENCH=MobileArena
+#   ROBODOJO_IMAGE=robodojo:cuda12.8  ROBODOJO_SMOKE_TASK=place_bread_in_oven
 #   ROBODOJO_SMOKE_POLICY=demo_policy ROBODOJO_SMOKE_PORT=6060
-#   ROBODOJO_SMOKE_ENV_CFG=arx_x5     ROBODOJO_SMOKE_ACTION_TYPE=joint
+#   ROBODOJO_SMOKE_ENV_CFG=mobile_arena     ROBODOJO_SMOKE_ACTION_TYPE=joint
 #   ROBODOJO_SMOKE_EVAL_NUM=1         ROBODOJO_CONDA_ENV=RoboDojo
 
 set -uo pipefail
@@ -28,7 +28,7 @@ LOG_DIR="${ROOT_DIR}/docker/smoke_logs"
 mkdir -p "${LOG_DIR}"
 
 IMAGE="${ROBODOJO_IMAGE:-robodojo:cuda12.8}"
-BENCH="${ROBODOJO_SMOKE_BENCH:-RoboDojo}"
+BENCH="${ROBODOJO_SMOKE_BENCH:-MobileArena}"
 TASK="${ROBODOJO_SMOKE_TASK:-}"
 POLICY="${ROBODOJO_SMOKE_POLICY:-demo_policy}"
 PORT="${ROBODOJO_SMOKE_PORT:-6060}"
@@ -233,7 +233,7 @@ phase_eval() {
 
     # curobo robot configs (Assets/Robots/**/curobo.yml, generated from *_tmp.yml
     # by utils/update_embodiment_config_path.py) bake in ABSOLUTE paths using the
-    # host repo root (os.getcwd()), e.g. ${ROOT_DIR}/Assets/Robots/x5/X5A.urdf.
+    # host repo root (os.getcwd()), e.g. ${ROOT_DIR}/Assets/Robots/m92uw/m92uw.urdf.
     # Mount Assets both at the in-container repo path (where the code looks) AND at
     # the host path (so those baked absolute paths resolve). Both read-only, so the
     # host's configs are never modified.
@@ -273,12 +273,12 @@ phase_verify() {
     log "result: ${rj}"
     log "$(cat "${rj}")"
     if python - "$rj" "${EXPECTED_EVAL_NUM}" <<'PY'
-import json, math, sys
+import json, sys
 d=json.load(open(sys.argv[1]))
 et=d.get("eval_time",0)
 expected=int(sys.argv[2])
 print(f"[verify] success_rate={d.get('success_rate')} eval_time={et}/{expected} score={d.get('score')}")
-sys.exit(0 if (type(et) in (int,float) and math.isfinite(et) and et>=expected) else 1)
+sys.exit(0 if type(et) is int and et >= expected else 1)
 PY
     then pass verify; else fail verify "incomplete eval_time (expected ${EXPECTED_EVAL_NUM}) in ${rj}"; fi
 }

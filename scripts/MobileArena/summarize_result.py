@@ -479,7 +479,7 @@ def write_markdown(data):
 
 
 def cli(argv=None):
-    """Summarize MobileArena results without changing the RoboDojo CLI."""
+    """Summarize MobileArena results using the evaluation CLI."""
     parser = argparse.ArgumentParser(
         description="Summarize completed MobileArena evaluation results."
     )

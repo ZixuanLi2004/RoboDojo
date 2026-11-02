@@ -15,20 +15,14 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-BENCHMARKS = ("RoboDojo", "MobileArena")
+BENCHMARKS = ("MobileArena",)
 SHARED = {"Material", "Background", "Sensor", "Traj"}
 REQUIRED = {
-    "RoboDojo": (
-        "Object/RoboDojo", "Eval_Layout/RoboDojo/arx_x5", "Robots/x5",
-        "Robots/franka", "Room/Simple_Room", "Room/Simple_Room_nolight",
-    ),
     "MobileArena": (
         "Object/MobileArena", "Eval_Layout/MobileArena/mobile_arena", "Robots/m92uw", "Room/MobileArena",
     ),
 }
 ROBOT_FILES = {
-    "RoboDojo": ("Robots/x5/ARX.usd", "Robots/x5/robot_config.yml",
-                 "Robots/franka/Franka.usd", "Robots/franka/robot_config.yml"),
     "MobileArena": ("Robots/m92uw/M92UW.usd", "Robots/m92uw/robot_config.yml"),
 }
 LFS_HEADER = b"version https://git-lfs.github.com/spec/v1"
@@ -51,11 +45,9 @@ def selected(path, benches):
     if parts[0] in {"Object", "Eval_Layout"}:
         return parts[1] in benches
     if parts[0] == "Robots":
-        return ("MobileArena" in benches and parts[1] == "m92uw") or (
-            "RoboDojo" in benches and parts[1] in {"x5", "franka"}
-        )
+        return "MobileArena" in benches and parts[1] == "m92uw"
     if parts[0] == "Room":
-        return ("MobileArena" if parts[1] == "MobileArena" else "RoboDojo") in benches
+        return "MobileArena" in benches and parts[1] == "MobileArena"
     return False
 
 
@@ -116,7 +108,7 @@ def validate_source(manifest, benches):
             "Selected source/revision is missing required benchmark assets:\n  "
             + "\n  ".join(sorted(set(missing)))
             + "\nChoose a source/revision containing the selected benchmarks "
-            "(HF_REPO_URL / HF_REPO_ID / HF_REVISION), or select --bench RoboDojo or MobileArena."
+            "(HF_REPO_URL / HF_REPO_ID / HF_REVISION)."
         )
 
 
@@ -239,7 +231,10 @@ def download(root, requested):
     directories = sorted({"Assets/" + "/".join(Path(path).parts[:2])
                           if Path(path).parts[0] not in SHARED else "Assets/" + Path(path).parts[0]
                           for path in manifest})
-    git(cache, "sparse-checkout", "set", "--cone", *directories)
+    retained_directories = set(directories)
+    if (cache / ".git/info/sparse-checkout").is_file():
+        retained_directories.update(git(cache, "sparse-checkout", "list", capture=True).decode().splitlines())
+    git(cache, "sparse-checkout", "set", "--cone", *sorted(retained_directories))
     git(cache, "checkout", "--detach", commit)
     # Restore deleted files and pointer placeholders before the filtered LFS pull.
     broken = ["Assets/" + path for path, entry in manifest.items()
@@ -268,11 +263,11 @@ def main():
         prog="bash scripts/init_assets.sh", description=__doc__,
         epilog="Source: HF_REPO_URL or HF_REPO_ID (default RoboDojo-Benchmark/RoboDojo); HF_REVISION defaults to main.",
     )
-    parser.add_argument("--bench", choices=("all", *BENCHMARKS), default="all",
-                        help="Assets to download (default: all). Previously downloaded benchmarks are retained.")
+    parser.add_argument("--bench", choices=BENCHMARKS, default="MobileArena",
+                        help="Assets to download (default: MobileArena). Existing local assets are retained.")
     args = parser.parse_args()
     try:
-        download(ROOT, list(BENCHMARKS) if args.bench == "all" else [args.bench])
+        download(ROOT, [args.bench])
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"[assets] ERROR: {exc}", file=sys.stderr)
         return 1

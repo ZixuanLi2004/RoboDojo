@@ -155,7 +155,7 @@ simulation_app = app_launcher.app
 from omegaconf import OmegaConf
 
 from env.global_configs import *
-from src.eval_client.eval_env import create_eval_env
+from src.eval_client.nav_eval_env import create_nav_eval_env
 from utils.cluttered_generator import UnStableError
 from utils.pipeline_utils import *
 
@@ -316,13 +316,6 @@ def main():
             "deploy_cfg": deploy_cfg,
         }
     )
-    capped_num_envs = resolve_random_task_num_envs(task_name, num_envs, env_cfg.sim)
-    if capped_num_envs != num_envs:
-        print(
-            f"[main] Random task {task_name}: num_envs capped "
-            f"{num_envs} -> {capped_num_envs} "
-        )
-    num_envs = capped_num_envs
     if not eval_batch and num_envs != 1:
         print(
             f"[main] eval_batch=false in XPolicyLab/policy/{args_cli.policy_name}/deploy.yml; "
@@ -352,12 +345,7 @@ def main():
     env_cfg.sim.seed = [0 for _ in range(num_envs)]
     run_id = os.environ["ROBODOJO_RUN_ID"]
     resume_state = _load_resume_manifest(eval_cfg, run_id)
-    if benchmark_paths.name == "MobileArena":
-        from src.eval_client.nav_eval_env import create_nav_eval_env
-
-        env = create_nav_eval_env(env_cfg, simulation_app, resume_state=resume_state)
-    else:
-        env = create_eval_env(env_cfg, simulation_app, resume_state=resume_state)
+    env = create_nav_eval_env(env_cfg, simulation_app, resume_state=resume_state)
     eval_time = env.success_nums + env.fail_nums
     if eval_time >= eval_num:
         # Already complete on resume - nothing left to do.

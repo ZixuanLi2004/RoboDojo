@@ -1,79 +1,20 @@
-<div align="center">
+# MobileArena evaluation
 
-<img src="https://media.luminis-sim.com/media/challenge/posters/robodojo_logo.png"></img>
+This checkout evaluates **MobileArena**: eight mobile manipulation tasks and
+their `_l` (language) and `_s` (spatial) variants, for 24 runnable tasks.
+It uses NVIDIA Isaac Sim / IsaacLab and XPolicyLab policy servers.
 
-<h2 align="center">RoboDojo: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies</h2>
+MobileArena is the only supported benchmark and the default for
+`bash scripts/evaluate.sh <command>`. Explicit `--bench MobileArena` is optional.
+See the [task and policy guide](scripts/MobileArena/README.md),
+[CLI reference](scripts/README.md), and [Docker guide](docker/README.md).
 
-<h2 align="center"><a href="https://robodojo-benchmark.com/">Webpage</a> | <a href="https://robodojo-benchmark.com/doc/">Document</a> | <a href="https://arxiv.org/abs/2607.04434">Paper</a> | <a href="https://robodojo-benchmark.com/community">Community</a> | <a href="https://robodojo-benchmark.com/leaderboard">Leaderboard</a></h2>
+The shared simulation framework derives from RoboDojo. The repository directory,
+simulator Conda environment (`RoboDojo`), shared runtime environment variables,
+and external asset path placeholders retain their existing names.
+Local assets and previous evaluation results are preserved.
 
-</div>
-
-## This fork: RoboDojo + MobileArena
-
-This repository builds on RoboDojo and adds **MobileArena as a separate benchmark**.
-The original RoboDojo tasks, configurations, and scoring semantics are preserved;
-MobileArena adds 24 mobile manipulation tasks using the shared simulation stack:
-eight base tasks and their `_l` (language) and `_s` (spatial) variants.
-
-Both benchmarks use `bash scripts/evaluate.sh <command> --bench <NAME>`:
-
-- **MobileArena:** pass `--bench MobileArena`; see the [MobileArena guide](scripts/MobileArena/README.md).
-- **RoboDojo:** pass `--bench RoboDojo` (the default); see the [CLI guide](scripts/README.md) and [official documentation](https://robodojo-benchmark.com/doc/).
-
-Task discovery, environment checks, single-task launch, and batch scheduling are
-shared. Benchmark-specific task definitions and scoring remain separate.
-`scripts/MobileArena/mobile_arena.sh` remains a compatibility alias for MobileArena.
-
-This fork uses [ZixuanLi2004/XPolicyLab](https://github.com/ZixuanLi2004/XPolicyLab)
-for policy integration; see its [README](XPolicyLab/README.md) for the adapters
-included here. The RoboDojo overview, news, leaderboard, and citations below
-refer to the original benchmark. For this fork, start with the
-[quick start](#mobilearena-quick-start) and [shared CLI guide](scripts/README.md);
-upstream policy counts and examples describe the broader upstream project.
-
-https://private-user-images.githubusercontent.com/88101805/619409345-cc074c5d-4567-4418-8a29-1385aaba9d5b.mp4
-
-## News
-
-- **September 16–17, 2026**
-  - Fixed a single-frame discrepancy in `get_obs` and updated both the code and Hugging Face data. Rerunning evaluations across multiple models showed that the experimental results remain essentially unchanged.
-  - Together with RoboTwin, fixed the channel ordering of the RGB data byte stream to keep both projects consistent. Please use this update with XPolicyLab commit [`bb9a0b5`](https://github.com/XPolicyLab/XPolicyLab/commit/bb9a0b5f5136a74503b679af830bfd0a3a837d5c) or later.
-  - Updated the simulation assets for the `swap_T` task to make the objects less prone to slipping.
-- **July 6, 2026** — Released the [RoboDojo paper](https://arxiv.org/abs/2607.04434) and open-sourced the code.
-
-## ✨ Highlights
-
-<p align="center">
-  <img src="https://media.luminis-sim.com/media/home/teaser.png" width="70%"></img>
-</p>
-
-<p align="center"><em>Overview of RoboDojo. RoboDojo unifies efficient simulation evaluation and reproducible real-world testing for generalist robot manipulation, covering 42 simulation tasks, 18 real-world tasks, heterogeneous parallel simulation, RoboDojo-RealEval, XPolicyLab, and a continuously updated leaderboard.</em></p>
-
-> RoboDojo is **eval-only** in this release: it provides the simulator client, benchmark tasks, asset/config validation, and result artifacts. Policy integration and policy servers are owned by [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab/blob/main/README.md).
-
-- 🌐 **Unified sim-and-real benchmark** — 42 simulation tasks and 18 real-world tasks across 3 robot embodiments for generalist robot manipulation.
-- 🧭 **Five capability dimensions** — Generalization, Memory, Precision, Long-Horizon, and Open, designed to probe different skills rather than simple object or layout reskins.
-- 🧗 **Challenging by design** — intentionally hard, diverse, long-horizon tasks that expose failures hidden by simpler benchmarks.
-- ⚡ **Heterogeneous parallel simulation** — runs different tasks, scenes, and processes concurrently on Isaac Sim for fast, scalable feedback.
-- 🧱 **Physically grounded assets** — rigid, articulated, and deformable objects in a single configuration-driven scene.
-- 🤖 **Integrate once, evaluate everywhere** — [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab/blob/main/README.md) unifies 40+ policies behind one interface for both simulation and real-world runs.
-- 📊 **Reproducible & leaderboard-ready** — seed-controlled layouts and one-command `summarize` aggregation into a leaderboard table.
-
-## 📚 Documentation
-
-For the added benchmark, see the [MobileArena guide](scripts/MobileArena/README.md).
-The [RoboDojo documentation](https://robodojo-benchmark.com/doc/) remains the canonical reference for the original RoboDojo benchmark. Key sections:
-
-| Section | Description |
-| :-- | :-- |
-| [Usage Overview](https://robodojo-benchmark.com/doc/usage/) | End-to-end walkthrough of the evaluation workflow. |
-| [Installation & Downloading (Assets and Data)](https://robodojo-benchmark.com/doc/usage/install-and-download/) | Environment setup and downloading robot/object/layout assets/training data. |
-| [Quick Evaluation](https://robodojo-benchmark.com/doc/usage/quick-evaluation/) | Quickly dispatch XPolicyLab to run a policy for testing. |
-| [XPolicyLab](https://robodojo-benchmark.com/doc/usage/xpolicylab/) | Integrates a large collection of policies and defines how to integrate new ones. |
-| [Simulation Tasks Details](https://robodojo-benchmark.com/doc/sim-tasks/) | The 42 Isaac Sim tasks across five capability dimensions. |
-| [Real Robot Tasks Details](https://robodojo-benchmark.com/doc/real-tasks/) | The 18 real-world tasks on Piper X, Piper, and ARX X5. |
-| [Configurations](https://robodojo-benchmark.com/doc/usage/configurations/) | Simulator, scene, robot, and camera configuration options. |
-| [Common Issues](https://robodojo-benchmark.com/doc/common-issue/) | Troubleshooting for installation, assets, GPU memory, and evaluation. |
+Policy integration lives in [XPolicyLab](XPolicyLab/README.md).
 
 ## MobileArena quick start
 
@@ -90,13 +31,10 @@ conda activate RoboDojo
 bash scripts/init_assets.sh --bench MobileArena
 ```
 
-`init_assets.sh --bench MobileArena` downloads MobileArena objects, rooms, robots, and
-saved layouts together with shared assets. To prepare both benchmarks, use the
-default `bash scripts/init_assets.sh` (equivalent to `--bench all`); use
-`--bench RoboDojo` for RoboDojo alone. Both use the same Hugging Face asset
-source, configured through `HF_REPO_ID`, `HF_REPO_URL`, and `HF_REVISION`.
-The selected revision must contain the requested benchmark's assets; missing
-packages cause an error. These assets are not bundled with this checkout.
+`init_assets.sh` downloads MobileArena objects, rooms, robots, and saved layouts
+together with shared assets. Its source is configured through `HF_REPO_ID`,
+`HF_REPO_URL`, and `HF_REVISION`. The selected revision must contain MobileArena
+assets; missing packages cause an error. Assets are not bundled with this checkout.
 See the [asset options](scripts/README.md#download-assets) and the
 [MobileArena asset layout](scripts/MobileArena/README.md#installation-and-assets).
 
@@ -134,47 +72,40 @@ results. Results are written under
 server/client commands, resume, and the full 24-task × 3-seed summary.
 All 24 tasks, including the base tasks and `_l`/`_s` variants, require 25 episodes
 per seed, as configured in `task/MobileArena/config/_task.yml`.
-MobileArena supports every evaluation command; RoboDojo capability `dimensions`
-do not apply to its tasks. For the original benchmark, follow the
-[RoboDojo CLI guide](scripts/README.md).
 
 ### Checks without simulation
 
 With Python 3.11+, PyYAML, NumPy, and Bash 4+ available:
 
 ```bash
-python -m unittest discover -s tests -p 'test_*.py'
-bash scripts/evaluate.sh tasks --bench RoboDojo --check
+bash -n scripts/evaluate.sh scripts/eval_policy.sh
+bash scripts/evaluate.sh doctor --skip-isaac --skip-conda --skip-policy
 bash scripts/evaluate.sh tasks --bench MobileArena --check
 ```
 
-These checks cover CLI routing, scheduling, result handling, and selected
-MobileArena action-layout contracts. They do not start Isaac Sim or load learned
-policy weights. The current changes have been checked on CPU; GPU simulation,
-asset loading, Pink IK execution, and real checkpoint inference still require
-validation on a configured Linux evaluation machine. A successful dry run or
-doctor check alone does not establish that runtime validation.
+These checks validate task/configuration discovery and available asset files.
+They do not start Isaac Sim or load policy weights. Use an actual one-episode
+evaluation to verify asset loading, physics, rendering, and the policy connection.
 
 ## 🗂️ Repository Structure
 
 ```text
 env/                   simulator backbone and managers
 env_cfg/               simulator, scene, robot, and camera configs
-task/RoboDojo/         original RoboDojo tasks and task YAML configs
-task/MobileArena/          24 mobile manipulation tasks and configs (8 base + 16 variants)
+task/MobileArena/       24 mobile manipulation tasks and configs (8 base + 16 variants)
 src/eval_client/       shared simulator client
-scripts/evaluate.sh    shared CLI; select RoboDojo or MobileArena with --bench
+scripts/evaluate.sh    MobileArena CLI (default benchmark)
 scripts/internal/      shared task discovery, validation, launch, and batching
-scripts/RoboDojo/      RoboDojo scoring and download helpers
-scripts/MobileArena/       MobileArena scoring, guide, and compatibility CLI alias
+scripts/MobileArena/    MobileArena scoring, guide, and compatibility CLI alias
 scripts/eval_policy.sh shared simulator client entry
 XPolicyLab/            policy server and policy integrations
 Assets/                downloaded robot, object, room, material, and layout assets
 ```
 
-`evaluate.sh summarize --bench RoboDojo|MobileArena` selects the summary script in
-the matching benchmark folder and writes `eval_result/<benchmark>/_summary.md`
-by default. Each benchmark retains its own scoring and completeness rules.
+`evaluate.sh summarize` writes `eval_result/MobileArena/_summary.md` by default.
+Full scoring covers 24 tasks × three seeds, with 25 episodes per task and seed.
+Invalid or incomplete latest results remain incomplete; older results are not
+used as a fallback.
 
 ## 🔌 Policy Integration
 
@@ -189,52 +120,17 @@ XPolicyLab/policy/<POLICY_NAME>/deploy.yml
 ```
 
 `evaluate.sh eval` requires `eval.sh` for validation but launches the two setup
-scripts directly for either benchmark. The selected benchmark determines task
-lookup, the default environment profile, and result paths. The client setup
+scripts directly. MobileArena uses profile `mobile_arena` and result paths under
+`eval_result/MobileArena/`. The client setup
 calls `scripts/eval_policy.sh`; `deploy.py`
 provides the environment-side adapter, and `deploy.yml` declares transport,
 batching, and policy-specific runtime settings. A policy's `eval.sh` is also
 available as a direct policy-side entry point.
 
-## 🏆 Leaderboard
+## Acknowledgements
 
-View live rankings on the [RoboDojo Leaderboard](https://robodojo-benchmark.com/leaderboard).
-
-**Simulation.** The full evaluation stack is open source, so you can debug locally and iterate on scores. Official RoboDojo-endorsed listings are submitted through the cloud evaluation pipeline with anti-cheating verification.
-
-**Real world.** Real-robot leaderboard entries are accepted through the same cloud evaluation process; see the public documentation for protocol, rules, and submission details.
-
-## 📝 Citation
-
-```bibtex
-% RoboDojo
-@article{chen2026robodojo,
-  title={{RoboDojo}: A Unified Sim-and-Real Benchmark for Comprehensive Evaluation of Generalist Robot Manipulation Policies},
-  author={Chen, Tianxing and Chen, Yue and Li, Zixuan and Tang, Junyuan and Su, Kailun and Wan, Weijie and Chen, Baijun and Lu, Haoran and Yan, Haowen and Su, Honghao and others},
-  journal={arXiv preprint arXiv:2607.04434},
-  year={2026}
-}
-
-% XPolicyLab
-@article{community2026xpolicylab,
-  title={{XPolicyLab}: A Unified Standard and Open Ecosystem for Robot Policy Evaluation and Deployment},
-  author={Community, XPolicyLab and Chen, Tianxing and Chen, Yue and Nian, Tian and Cai, Zijian and Chen, Guangyu and Lin, Wenwei and Liang, Qiwei and Xiang, Peicheng and Su, Kailun and others},
-  journal={arXiv preprint arXiv:2608.09892},
-  year={2026}
-}
-```
-
-## 🙏 Acknowledgements
-
-RoboDojo builds on [Isaac Sim](https://developer.nvidia.com/isaac/sim), [IsaacLab](https://github.com/isaac-sim/IsaacLab), [IsaacLab-Arena](https://github.com/isaac-sim/IsaacLab-Arena), [RoboTwin 2.0](https://github.com/robotwin-Platform/robotwin), [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab), and [MagicSim](https://arxiv.org/abs/2606.17511). We thank the authors and maintainers for their open-source contributions to the robotics community.
-
-Contact [Tianxing Chen](https://tianxingchen.github.io/) or [Yue Chen](https://yuechen0614.github.io/) if you have questions or suggestions.
-
-## 🏫 Affiliations
-
-RoboDojo is operated by **AI MMLab Club**, a non-profit, vendor-neutral organization, and is jointly maintained and supported by a global consortium of academic institutional partners. To preserve the fairness, neutrality, and independence of the official evaluation, RoboDojo does not involve commercial companies in its governance, operation, funding, sponsorship, compute, hardware, or other forms of project support. For inquiries from academic or non-profit partners regarding project collaboration or resource support, please contact [RoboDojoCommittee@gmail.com](mailto:RoboDojoCommittee@gmail.com).
-
-<img src="https://media.luminis-sim.com/media/home/partners/affiliations.png"></img>
+This evaluation stack builds on RoboDojo, Isaac Sim, IsaacLab, CuRobo, and
+XPolicyLab. Their original licenses and copyright notices are retained.
 
 ## ⚖️ License
 

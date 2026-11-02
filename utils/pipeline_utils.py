@@ -56,15 +56,6 @@ def process_randomization(env_cfg):
     return env_cfg
 
 
-def resolve_random_task_num_envs(task_name, num_envs, sim_cfg):
-    """Cap parallel env count for *_random tasks using sim.scene.clutter_env_limit."""
-    if not str(task_name).endswith("_random"):
-        return int(num_envs)
-
-    scene_cfg = sim_cfg.get("scene", {}) if sim_cfg is not None else {}
-    limit = scene_cfg.get("clutter_env_limit", 5)
-    return min(int(num_envs), int(limit))
-
 def _task_setting(task_info, common_info, key, default):
     return task_info.get(key, common_info.get(key, default))
 
@@ -105,20 +96,10 @@ def process_config(env_cfg, task_name):
     if render_interval != default_render_interval:
         env_cfg["sim"]["render_interval"] = render_interval
 
-    default_scene = "default"
-    scene_config = _task_setting(task_info, common_info, "scene_config", default_scene)
-    if scene_config != default_scene:
-        env_cfg.scene = load_yaml(os.path.join(ENV_CONFIG_PATH, "scene", scene_config + ".yml"))
-
-    default_camera = "camera_config"
-    camera_config = _task_setting(task_info, common_info, "camera_config", default_camera)
-    if camera_config != default_camera:
-        env_cfg.camera = load_yaml(os.path.join(ENV_CONFIG_PATH, "camera", camera_config + ".yml"))
-
-    default_robot = "dual_x5"
-    robot_config = _task_setting(task_info, common_info, "robot_config", default_robot)
-    if robot_config != default_robot:
-        env_cfg.robot = load_yaml(os.path.join(ENV_CONFIG_PATH, "robot", robot_config + ".yml"))
+    for kind in ("scene", "camera", "robot"):
+        override = _task_setting(task_info, common_info, f"{kind}_config", None)
+        if override is not None:
+            env_cfg[kind] = load_yaml(os.path.join(ENV_CONFIG_PATH, kind, override + ".yml"))
 
     if not _task_setting(task_info, common_info, "robot_self_collision", True):
         for cfg in env_cfg.robot.robots:

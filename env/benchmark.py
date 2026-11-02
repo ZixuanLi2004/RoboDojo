@@ -55,12 +55,12 @@ class BenchmarkPaths:
     name: str = BENCHMARK
 
     def __post_init__(self):
-        if self.name not in ("RoboDojo", "MobileArena"):
-            raise ValueError(f"Unknown benchmark {self.name!r}; expected 'RoboDojo' or 'MobileArena'.")
+        if self.name != "MobileArena":
+            raise ValueError(f"Unknown benchmark {self.name!r}; expected 'MobileArena'.")
 
     @classmethod
     def from_config(cls, config):
-        """Read an eval profile, preserving the default for existing profiles."""
+        """Read a MobileArena evaluation profile."""
         return cls(config.get("benchmark", BENCHMARK))
 
     @property

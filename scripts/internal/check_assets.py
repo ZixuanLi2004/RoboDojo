@@ -12,7 +12,7 @@ from benchmark_profile import expected_episode_count
 import yaml
 
 OBJECT_TYPES = ("Rigid", "Dynamic", "Geometry", "Articulation", "Garment", "Fluid")
-ROBOT_USDS = {"x5": "ARX.usd", "franka": "Franka.usd", "m92uw": "M92UW.usd"}
+ROBOT_USDS = {"m92uw": "M92UW.usd"}
 
 
 class AssetCheck:
@@ -85,15 +85,12 @@ class AssetCheck:
             if not description:
                 self.errors.append(f"Missing or empty robot configuration: {base}/robot_config.yml")
                 continue
-            common = description.get("common", {}) if name == "m92uw" else description
+            common = description.get("common", {})
             self.reference(base, common.get("urdf_path"), "urdf_path")
             if not robot.get("need_planner", True):
                 continue
-            if name == "m92uw":
-                planner = {**(description.get("planner") or {}), **(robot.get("planner") or {})}
-                planner_path = planner.get("config") or common.get("curobo_yml")
-            else:
-                planner_path = "curobo.yml"
+            planner = {**(description.get("planner") or {}), **(robot.get("planner") or {})}
+            planner_path = planner.get("config") or common.get("curobo_yml")
             if not planner_path:
                 self.errors.append(f"Missing planner config reference in {base}/robot_config.yml")
             else:
@@ -170,9 +167,9 @@ def check_assets(root, bench, env_cfg, task, seed, eval_num):
     settings = {**index.get("common", {}), **index.get("tasks", {}).get(task, {})}
     refs = dict(profile.get("config", {}))
     # Keep the same override behavior as utils.pipeline_utils.process_config.
-    for kind, default in (("scene", "default"), ("robot", "dual_x5")):
-        override = settings.get(f"{kind}_config", default)
-        if override != default:
+    for kind in ("scene", "robot"):
+        override = settings.get(f"{kind}_config")
+        if override is not None:
             refs[kind] = override
     robot = check.mapping(root / "env_cfg" / "robot" / f"{refs.get('robot')}.yml")
     scene = check.mapping(root / "env_cfg" / "scene" / f"{refs.get('scene')}.yml")

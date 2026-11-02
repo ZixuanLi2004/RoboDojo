@@ -1,25 +1,22 @@
-# RoboDojo — Claude Code Guide
+# MobileArena — Claude Code Guide
 
 ## Project Overview
 
-RoboDojo is a unified sim-and-real robotics benchmark built on NVIDIA Isaac Sim / IsaacLab. This fork adds **MobileArena as a separate benchmark** on that foundation. Policy evaluation runs via XPolicyLab and the shared simulation stack.
-
-Project boundary: preserve the original RoboDojo tasks, task configs, reward/success logic, and scoring semantics. Do not refactor or modify them while adding or maintaining MobileArena. Use the shared `scripts/evaluate.sh` CLI with `--bench RoboDojo|MobileArena` for task selection, validation, launches, and batch evaluation. Keep benchmark-specific metadata and scoring separate; shared-stack changes must remain compatible with RoboDojo.
+This checkout evaluates MobileArena on the shared Isaac Sim / IsaacLab stack.
+Policy evaluation runs via XPolicyLab. MobileArena is the only supported
+benchmark; use `scripts/evaluate.sh` for inventory, validation, launches, and
+batch evaluation. The repository name and `RoboDojo` simulator Conda environment
+remain unchanged. Local assets and old evaluation results are retained.
 
 Contributors maintain **Tasks** (scene + reward logic), shared **env** / **env_cfg** configs, and eval infrastructure under **scripts/** and **src/eval_client/**.
 
-Human-facing docs: [MobileArena](scripts/MobileArena/README.md) and [original RoboDojo](https://robodojo-benchmark.com/doc/).
+Human-facing docs: [MobileArena](scripts/MobileArena/README.md).
 
 ## Repository Layout
 
 ```
-task/RoboDojo/
-  config/<task_name>.yml     task scene/object config
-  tasks/<task_name>.py       task logic (inherits TaskEnv)
-  demos/                     non-inventory demos (e.g. dlc)
 task/MobileArena/                added mobile manipulation task logic and configs
 task/task_registry.py        shared benchmark-scoped dynamic task loader
-scripts/RoboDojo/            RoboDojo scoring and download helpers
 scripts/MobileArena/             MobileArena scoring, guide, compatibility CLI alias
 env/                         TaskEnv backbone and managers
 env_cfg/                     robot / scene / sim / camera YAML
@@ -37,7 +34,7 @@ eval_result/                 runtime eval output
 
 | Own in RoboDojo | Own in XPolicyLab |
 | :-- | :-- |
-| `env/`, `env_cfg/`, `task/RoboDojo/`, `task/MobileArena/`, `src/eval_client/` | Policy code, checkpoints, `deploy.yml`, policy server |
+| `env/`, `env_cfg/`, `task/MobileArena/`, `src/eval_client/` | Policy code, checkpoints, `deploy.yml`, policy server |
 | `scripts/evaluate.sh`, `scripts/eval_policy.sh` | `XPolicyLab/policy/<POLICY>/eval.sh`, `setup_eval_*` scripts |
 | `utils/`, install/assets scripts | Policy-specific dependencies and training |
 
@@ -47,14 +44,12 @@ eval_result/                 runtime eval output
 
 ## Eval Commands & Flow
 
-**CLI** (`bash scripts/evaluate.sh <command> --bench RoboDojo|MobileArena`):
+**CLI** (`bash scripts/evaluate.sh <command> --bench MobileArena`):
 
-The default benchmark is RoboDojo; `--dataset` is a compatibility alias for
-`--bench`. `scripts/MobileArena/mobile_arena.sh` is a thin compatibility entry point
-for MobileArena. Add benchmark metadata to the shared infrastructure instead of creating
-a separate task inventory, doctor, or batch runner for each benchmark. Defaults
-and summary dispatch live in `scripts/internal/benchmark_profile.py`; grouping
-and the existing RoboDojo runtime weights live in `scripts/internal/benchmark_groups.py`.
+MobileArena is the default, so `--bench MobileArena` is optional. `--dataset`
+is an alias for `--bench`. `scripts/MobileArena/mobile_arena.sh` forwards to the
+same CLI. Defaults and summary dispatch live in `scripts/internal/benchmark_profile.py`;
+round-robin GPU grouping lives in `scripts/internal/benchmark_groups.py`.
 
 | Command | Purpose |
 | :-- | :-- |
@@ -64,7 +59,6 @@ and the existing RoboDojo runtime weights live in `scripts/internal/benchmark_gr
 | `client` | Sim client only (connect to running server) |
 | `smoke` | Selected/all tasks, `EVAL_NUM=1` by default |
 | `benchmark` | Full sweep (`--eval-num native` or numeric); sequential unless GPU lists are supplied |
-| `dimensions` | List RoboDojo capability dimensions; MobileArena does not define dimensions |
 | `summarize` | Aggregate `eval_result/` into markdown table |
 | `tasks` | List runnable tasks (maintainer inventory) |
 
@@ -96,8 +90,8 @@ Fast validation:
 
 ```bash
 bash scripts/evaluate.sh doctor --skip-isaac --skip-conda --skip-policy
-bash scripts/evaluate.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task stack_bowls --ckpt <CKPT> --policy-env <ENV> --dry-run
-bash scripts/evaluate.sh smoke --policy-dir XPolicyLab/policy/<POLICY> --ckpt <CKPT> --policy-env <ENV> --only stack_bowls,push_T --dry-run
+bash scripts/evaluate.sh eval --policy-dir XPolicyLab/policy/<POLICY> --task place_bread_in_oven --ckpt <CKPT> --policy-env <ENV> --dry-run
+bash scripts/evaluate.sh smoke --policy-dir XPolicyLab/policy/<POLICY> --ckpt <CKPT> --policy-env <ENV> --only place_bread_in_oven,throw_away_trash --dry-run
 ```
 
 For a sequential eval-infrastructure acceptance run:
@@ -106,14 +100,9 @@ For a sequential eval-infrastructure acceptance run:
 bash scripts/evaluate.sh smoke --policy-dir XPolicyLab/policy/<POLICY> --ckpt <CKPT> --policy-env <ENV> --fail-fast
 ```
 
-Multi-GPU batching uses the shared scheduler. Preserve RoboDojo's original
-`arx_x5` runtime weights and capability dimensions. MobileArena has no runtime
-weights and uses round-robin task assignment; do not describe it as balancing
-execution time. Result summaries dispatch to each benchmark's existing scoring
-implementation without changing score semantics: `scripts/RoboDojo/summarize_result.py`
-and `scripts/MobileArena/summarize_result.py`. Keep these implementations in their
-respective benchmark folders. The default output is
-`eval_result/<benchmark>/_summary.md`.
+Multi-GPU batching uses round-robin task assignment; equal task counts do not
+guarantee equal execution time. Scoring lives in `scripts/MobileArena/summarize_result.py`
+and writes `eval_result/MobileArena/_summary.md` by default.
 
 New code imports from `env.*`.
 
@@ -123,13 +112,8 @@ MobileArena adds **24 tasks** under `task/MobileArena/`: eight base tasks and th
 (language) and `_s` (spatial) variants. Use
 `bash scripts/evaluate.sh tasks --bench MobileArena --check` to inspect them. Its default
 profile is `mobile_arena`, with layout/result `config_name: mobile_arena`.
-The original RoboDojo inventory below remains unchanged:
-
-- **54 runnable task configs** (42 base + 12 `_random` generalization variants).
-- Registration is dynamic: `task_registry.load_task_class(task_name)` imports `task.RoboDojo.tasks.<task_name>` and expects class name == module name.
-- Config path: `task/RoboDojo/config/<task_name>.yml`.
-- Inventory: `bash scripts/evaluate.sh tasks` or `python scripts/internal/task_inventory.py --format json --check`.
-- `task/RoboDojo/demos/` (e.g. `dlc`) is outside the benchmark inventory scan.
+Registration loads `task.MobileArena.tasks.<task_name>` and expects the exported
+class name to match the module. Configs live in `task/MobileArena/config/`.
 
 ## Naming
 
@@ -137,7 +121,7 @@ The original RoboDojo inventory below remains unchanged:
 - **Python packages/directories**: `snake_case` — `env/robot_manager/`, `env/scene_manager/objects/`
 - **Python module files**: `snake_case.py` — `task_env.py`, `obs_manager.py`
 - **Python classes**: **PascalCase** — `RewardManager`, `TaskEnv`
-- **Tasks**: filename, YAML name, exported env class, and layout/result paths must match. Most tasks use lowercase `snake_case`; **`play_Xylophone`**, **`swap_T`**, **`push_T`**, and **`push_T_random`** match uppercase asset names.
+- **Tasks**: filename, YAML name, exported env class, and layout/result paths must match. Use lowercase `snake_case` for task names.
 - **Submodules**: keep upstream casing — `XPolicyLab/`, `Assets/`
 
 ## Code Conventions
@@ -169,7 +153,7 @@ Typical rigid-body tasks define:
 - `common` with `xlim`, `ylim`, `rotate_rand` (and `rotate_deg` when rotation is enabled).
 - `select_mode` with `nums` and `mode`.
 
-Garment tasks (e.g. `fold_clothes*`) use a `Garment` section instead of `Rigid`. Many configs add `Geometry`, `Clutter`, etc.
+Task configs may also declare `Articulation`, `Geometry`, and other object sections.
 
 ### Commit Message Format
 
@@ -181,13 +165,13 @@ Types : feat | fix | update | refactor | docs | chore
 ```
 
 Examples:
-- `[Task] update: fix stack_bowls run_reward bowl_color check`
+- `[Task] update: fix place_bread_in_oven reward check`
 - `[Env] fix: correct gripper warm-up timing`
-- `[Config] update: adjust xlim for insert_test_tubes`
+- `[Config] update: adjust place_fruit_basket configuration`
 
 ### Branch Naming
 
-`<contributor>/<scope>-<short-description>`  e.g. `zixuan/task-hang-mugs`
+`<contributor>/<scope>-<short-description>`  e.g. `zixuan/task-place-bread`
 
 ## Validation Loops
 
@@ -197,9 +181,8 @@ Use the **smallest loop** that proves the current change.
 
 ```bash
 bash -n scripts/evaluate.sh scripts/eval_policy.sh
-python scripts/internal/task_inventory.py --bench RoboDojo --format json --check
 python scripts/internal/task_inventory.py --bench MobileArena --format json --check
-python -m unittest discover -s tests -p 'test_*.py'
+bash scripts/evaluate.sh doctor --skip-isaac --skip-conda --skip-policy
 ruff check .
 git diff --check
 ```
@@ -209,10 +192,8 @@ contracts and selected action-layout/seed/result behavior without launching
 Isaac Sim or loading checkpoints. Do not describe dry runs or these tests as
 proof of GPU simulation, asset loading, Pink IK, or actual model inference.
 
-Asset checks require real assets. `scripts/init_assets.sh --bench
-RoboDojo|MobileArena|all` selects packages; its default is `all`, while the evaluation
-CLI defaults to RoboDojo. Both benchmarks use the same Hugging Face asset
-source, configurable through `HF_REPO_ID`, `HF_REPO_URL`, and `HF_REVISION`.
+Asset checks require real assets. `scripts/init_assets.sh` selects MobileArena
+and shared packages by default. The Hugging Face asset source is configurable through `HF_REPO_ID`, `HF_REPO_URL`, and `HF_REVISION`.
 The selected revision must contain the requested benchmark's assets; missing
 packages must fail rather than appear ready. MobileArena needs complete
 `Assets/Object/MobileArena/`, `Assets/Room/MobileArena/`, `Assets/Robots/m92uw/`, and
@@ -233,7 +214,7 @@ full run names and paths; checking path existence is not weight validation.
 ```bash
 bash scripts/evaluate.sh eval \
   --policy-dir XPolicyLab/policy/<POLICY_NAME> \
-  --task stack_bowls \
+  --task place_bread_in_oven \
   --ckpt <CKPT_NAME> \
   --policy-env <POLICY_ENV> \
   --dry-run
@@ -241,7 +222,7 @@ bash scripts/evaluate.sh smoke \
   --policy-dir XPolicyLab/policy/<POLICY_NAME> \
   --ckpt <CKPT_NAME> \
   --policy-env <POLICY_ENV> \
-  --only stack_bowls,push_T \
+  --only place_bread_in_oven,throw_away_trash \
   --dry-run
 ```
 
@@ -250,7 +231,7 @@ bash scripts/evaluate.sh smoke \
 ```bash
 bash scripts/evaluate.sh eval \
   --policy-dir XPolicyLab/policy/<POLICY_NAME> \
-  --task stack_bowls \
+  --task place_bread_in_oven \
   --ckpt <CKPT_NAME> \
   --policy-env <POLICY_ENV> \
   --eval-num 1
@@ -275,12 +256,6 @@ that count when the adapter has `eval_batch: true`. `eval_batch: false` forces
 one environment. Multi-GPU groups are separate processes and must not be confused
 with parallel environments within a process.
 
-RoboDojo summary and its video checks select the same latest `_result.json`
-per task/policy/result configuration/seed, using file modification time, then
-run-directory name and outer run label for ties. Custom `--run-id` values must
-not determine chronology. Select before validating JSON or episode count so
-an incomplete latest result cannot fall back to an older complete run.
-
 MobileArena summaries use 24 tasks × seeds `0,1,2` (72 cells), requiring 25 valid
 episode records per base-task and `_l`/`_s` variant cell.
 `summarize --env-cfg` filters result `config_name`; launch `--env-cfg` selects
@@ -297,7 +272,7 @@ back to older complete runs.
 - [ ] YAML labels match Python labels exactly
 - [ ] `step_lim` is appropriate for task length
 - [ ] Task inherits `TaskEnv` (not `SyncCollectEnv` / `SyncRobotEnv`)
-- [ ] New task filenames are lowercase `snake_case` (unless uppercase asset exception)
+- [ ] New task filenames are lowercase `snake_case`
 
 ### Framework / Env PR
 - [ ] Backward-compatible; no new mandatory constructor args
